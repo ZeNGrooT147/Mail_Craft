@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Minus, Plus, Smile, Briefcase, AlertTriangle, Wand2,
   List, Zap, MessageSquare,
@@ -25,19 +24,18 @@ const quickActions = [
 const RefinementBar = ({ onRefine, disabled }: RefinementBarProps) => {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 lg:gap-3">
         {quickActions.map(({ icon: Icon, label, instruction }) => (
-          <Button
+          <button
             key={label}
-            variant="outline"
-            size="sm"
             onClick={() => onRefine(instruction)}
             disabled={disabled}
-            className="h-9 px-2.5 text-xs gap-1.5 rounded-xl justify-center bg-background/60 border-border/80 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-all"
+            className="group relative h-11 sm:h-11 lg:h-12 px-3 sm:px-4 rounded-lg lg:rounded-xl text-xs sm:text-xs lg:text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-b from-background/80 to-background border border-border/60 hover:border-primary/40 hover:bg-gradient-to-b hover:from-primary/10 hover:to-background/90 hover:shadow-lg hover:shadow-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Icon className="h-3 w-3 shrink-0" />
-            <span>{label}</span>
-          </Button>
+            <Icon className="h-4 w-4 lg:h-5 lg:w-5 text-foreground/70 group-hover:text-primary transition-colors" />
+            <span className="line-clamp-1 text-foreground group-hover:text-primary transition-colors">{label}</span>
+            <div className="absolute inset-0 rounded-lg lg:rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+          </button>
         ))}
       </div>
     </div>

@@ -554,7 +554,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                 <motion.div
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-0.5 sm:gap-1 flex-wrap"
                 >
                   {user && (
                     <Tooltip>
@@ -569,27 +569,28 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                             if (error) toast.error("Failed to save.");
                             else { toast.success("Saved!"); onDraftSaved?.(); }
                           }}
-                          className="h-9 px-3.5 text-sm gap-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors font-medium"
+                          className="h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors font-medium"
                         >
-                          <Save className="h-3.5 w-3.5" /> Save
+                          <Save className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Save</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Save draft (⌘S)</TooltipContent>
                     </Tooltip>
                   )}
                   <TextToSpeech text={draft} />
-                  <Button variant="ghost" size="sm" onClick={copyDraft} className="h-9 px-3.5 text-sm gap-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors font-medium">
+                  <Button variant="ghost" size="sm" onClick={copyDraft} className="h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors font-medium">
                     {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copied ? "Copied" : "Copy"}
+                    <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
                   </Button>
-                  <div className="w-px h-4 bg-border mx-0.5" />
+                  <div className="hidden sm:block w-px h-4 bg-border mx-0.5" />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => checkAndSend(openInGmail)}
-                        className="h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
+                        className="hidden sm:flex h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         Gmail
@@ -603,7 +604,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         variant="outline"
                         size="sm"
                         onClick={() => checkAndSend(openInOutlook)}
-                        className="h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
+                        className="hidden sm:flex h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         Outlook
@@ -611,8 +612,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-[10px]">Open in Outlook</TooltipContent>
                   </Tooltip>
-                  <div className="w-px h-4 bg-border mx-0.5" />
-                  <Button variant="ghost" size="sm" onClick={clearAll} className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                  <div className="hidden sm:block w-px h-4 bg-border mx-0.5" />
+                  <Button variant="ghost" size="sm" onClick={clearAll} className="h-8 sm:h-9 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </motion.div>
@@ -627,20 +628,20 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   whileHover={{ y: -1 }}
-                  className="m-5 rounded-3xl border border-border bg-card/95 shadow-[0_22px_45px_-26px_rgba(0,0,0,0.45)] relative overflow-hidden"
+                  className="m-3 sm:m-5 rounded-2xl sm:rounded-3xl border border-border bg-card/95 shadow-[0_22px_45px_-26px_rgba(0,0,0,0.45)] relative overflow-hidden"
                 >
                   {/* Decorative top accent bar */}
                   <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/80 to-transparent" />
                   
                   {/* Subject line display */}
                   {subject && (
-                    <div className="px-6 pt-5 pb-0">
-                      <p className="text-xs font-bold text-primary/60 uppercase tracking-[0.15em] mb-1">Subject</p>
-                      <p className="text-lg font-display font-bold text-foreground leading-tight">{subject}</p>
+                    <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-0">
+                      <p className="text-[9px] sm:text-xs font-bold text-primary/60 uppercase tracking-[0.15em] mb-1">Subject</p>
+                      <p className="text-base sm:text-lg font-display font-bold text-foreground leading-tight">{subject}</p>
                     </div>
                   )}
 
-                  <div className="px-6 py-5">
+                  <div className="px-4 sm:px-6 py-4 sm:py-5">
                     <textarea
                       value={draft + (signature || "")}
                       onChange={(e) => {
@@ -650,8 +651,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         else setDraft(val);
                         setDraftEditedSinceAnalysis(true);
                       }}
-                      className="w-full min-h-[300px] bg-transparent text-[19px] text-foreground leading-[2] resize-none outline-none font-body selection:bg-primary/20"
-                      style={{ height: `${Math.max(300, draft.split('\n').length * 32)}px` }}
+                      className="w-full min-h-[250px] sm:min-h-[300px] bg-transparent text-[16px] sm:text-[19px] text-foreground leading-[1.8] sm:leading-[2] resize-none outline-none font-body selection:bg-primary/20"
+                      style={{ height: `${Math.max(250, draft.split('\n').length * 28)}px` }}
                     />
                   </div>
 
@@ -724,39 +725,44 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                   )}
 
                   {/* ── Refine & Polish — persistent hero card ── */}
-                  <div ref={refineSectionRef} className="rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/[0.04] p-5 space-y-3 shadow-sm hover:shadow-md hover:shadow-primary/10 transition-all duration-300">
-                    <div className="flex items-center gap-3">
+                  <div ref={refineSectionRef} className="rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-card to-primary/[0.08] p-5 sm:p-6 space-y-4 sm:space-y-4 shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/15 transition-all duration-300">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                       <motion.div
-                        className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/25 to-primary/10 flex items-center justify-center"
-                        whileHover={{ scale: 1.1, rotate: -10 }}
+                        className="h-10 sm:h-11 w-10 sm:w-11 rounded-lg sm:rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shrink-0 shadow-md shadow-primary/20"
+                        whileHover={{ scale: 1.12, rotate: -8 }}
                         transition={{ type: "spring", stiffness: 400 }}
                       >
-                        <Wand2 className="h-4 w-4 text-primary" />
+                        <Wand2 className="h-5 sm:h-5 w-5 sm:w-5 text-primary" />
                       </motion.div>
-                      <div>
-                        <span className="text-base font-bold text-foreground font-display">Refine & Polish</span>
-                        <p className="text-xs text-muted-foreground">Quick-edit your draft with one click</p>
+                      <div className="min-w-0">
+                        <span className="text-lg sm:text-lg font-bold text-foreground font-display block">Refine & Polish</span>
+                        <p className="text-sm sm:text-sm text-muted-foreground/80">Quick-edit your draft with one click</p>
                       </div>
                     </div>
                     <RefinementBar onRefine={refineDraft} disabled={isGenerating} />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2.5 pt-2">
                       <input
                         type="text"
                         value={refinementInput}
                         onChange={(e) => setRefinementInput(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleCustomRefinement()}
-                        placeholder="Custom refinement instruction…"
-                        className="flex-1 h-10 bg-background rounded-xl px-3.5 border border-input text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+                        placeholder="Custom refinement…"
+                        className="flex-1 h-11 sm:h-11 lg:h-12 bg-gradient-to-b from-background/60 to-background rounded-lg lg:rounded-xl px-4 text-sm sm:text-sm lg:text-base outline-none border border-border/60 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                       />
-                      <Button variant="outline" size="sm" onClick={handleCustomRefinement} disabled={!refinementInput.trim() || isGenerating} className="h-10 px-3.5 rounded-xl hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all">
-                        <Send className="h-3.5 w-3.5" />
-                      </Button>
+                      <button 
+                        onClick={handleCustomRefinement} 
+                        disabled={!refinementInput.trim() || isGenerating} 
+                        className="h-11 sm:h-11 lg:h-12 px-4 sm:px-5 rounded-lg lg:rounded-xl bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90 hover:shadow-lg hover:shadow-primary/25 text-primary-foreground font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
+                      >
+                        <Send className="h-4 w-4 lg:h-5 lg:w-5 group-hover:translate-x-1 transition-transform" />
+                        <span className="text-sm sm:text-sm lg:text-base hidden sm:inline">Send</span>
+                      </button>
                     </div>
                   </div>
 
                   {/* ── AI Tools ── */}
-                  <div ref={toolsSectionRef} className="rounded-2xl border border-border/90 bg-card overflow-hidden shadow-sm">
-                    <div className="flex items-center gap-1 px-2 py-2 bg-secondary/30">
+                  <div ref={toolsSectionRef} className="rounded-2xl border border-border/60 bg-gradient-to-br from-card via-card to-primary/[0.02] overflow-hidden shadow-lg shadow-primary/5">
+                    <div className="flex items-center gap-1 px-3 lg:px-4 py-3 bg-gradient-to-r from-secondary/40 via-secondary/20 to-primary/[0.05] border-b border-border/40 overflow-x-auto sm:overflow-visible">
                       {toolTabs.map((tool) => {
                         const Icon = tool.icon;
                         const isActive = openToolSection === tool.id;
@@ -764,23 +770,23 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                           <motion.button
                             key={tool.id}
                             onClick={() => setOpenToolSection(isActive ? null : tool.id)}
-                            whileHover={{ y: -1, scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
+                            whileHover={{ y: -2, scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             className={`
-                              relative flex items-center justify-center gap-1.5 flex-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200
+                              relative flex items-center justify-center gap-1.5 flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-sm font-bold transition-all duration-250 shrink-0 group
                               ${isActive
-                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                                ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/30"
+                                : "text-foreground/70 hover:text-foreground hover:bg-secondary/50 border border-transparent hover:border-primary/20"
                               }
                             `}
                           >
-                            <Icon className="h-3.5 w-3.5" />
-                            <span className="truncate max-w-full leading-tight">{tool.label}</span>
+                            <Icon className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:scale-110" />
+                            <span className="truncate max-w-full leading-tight hidden sm:inline text-sm">{tool.label}</span>
                             {isActive && (
                               <motion.div
                                 layoutId="active-tool-indicator"
-                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-current"
-                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary-foreground"
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
                               />
                             )}
                           </motion.button>
@@ -795,10 +801,10 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                           className="overflow-hidden"
                         >
-                          <div className="p-4 border-t border-border/50">
+                          <div className="p-5 sm:p-6 border-t border-border/40 bg-gradient-to-b from-background/50 to-background">
                             {openToolSection === "tone" && <ToneAnalyzer text={draft} triggerKey={analysisKey} />}
                             {openToolSection === "ab" && <DraftComparison currentDraft={draft} onPickDraft={setDraft} />}
                             {openToolSection === "coach" && <GrammarCheck emailBody={draft} triggerKey={analysisKey} />}
