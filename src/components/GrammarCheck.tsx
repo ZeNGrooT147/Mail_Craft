@@ -120,11 +120,11 @@ const GrammarCheck = ({ emailBody, triggerKey }: GrammarCheckProps) => {
   };
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {findings.slice(0, 6).map((f, i) => (
-        <div key={i} className={`flex items-start gap-1.5 rounded-md border p-1.5 ${bgMap[f.type]}`}>
+        <div key={i} className={`flex items-start gap-2.5 rounded-lg border p-3 ${bgMap[f.type]} transition-all hover:shadow-md`}>
           {iconMap[f.type]}
-          <span className="text-[10px] text-foreground/80 leading-snug">{f.text}</span>
+          <span className="text-sm text-foreground/85 leading-relaxed">{f.text}</span>
         </div>
       ))}
     </div>

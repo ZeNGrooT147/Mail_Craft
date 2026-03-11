@@ -89,15 +89,15 @@ const SubjectLineSuggestions = ({ emailBody, context, onSelectSubject, triggerKe
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {suggestions.map((s, i) => (
         <button
           key={i}
           onClick={() => { onSelectSubject(s); toast.success("Subject applied!"); }}
-          className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-left transition-all duration-200 border border-transparent hover:border-border hover:bg-secondary/50 text-foreground/80 hover:text-foreground group"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-base text-left transition-all duration-200 border border-border/40 hover:border-primary/40 hover:bg-primary/5 text-foreground/85 hover:text-foreground hover:shadow-md group font-medium"
         >
           <span className="truncate pr-2">{s}</span>
-          <Check className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 text-foreground transition-opacity" />
+          <Check className="h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 text-primary transition-opacity" />
         </button>
       ))}
     </div>

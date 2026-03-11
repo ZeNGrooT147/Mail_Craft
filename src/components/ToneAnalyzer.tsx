@@ -117,18 +117,22 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
   if (!score) return null;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-primary">{score.label}</span>
+    <div className="space-y-4">
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 p-4 border border-primary/20">
+        <div className="text-sm text-muted-foreground mb-1">Overall Tone</div>
+        <div className="text-2xl font-bold text-primary font-display">{score.label}</div>
       </div>
       {(["formality", "friendliness", "confidence", "urgency"] as const).map((key) => (
-        <div key={key} className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{meterLabels[key][0]}</span>
-            <span className="font-medium text-foreground/70 capitalize">{key} · {score[key]}%</span>
-            <span>{meterLabels[key][1]}</span>
+        <div key={key} className="space-y-2.5 pb-3 border-b border-border/40 last:border-0 last:pb-0">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-base capitalize text-foreground">{key}</span>
+            <span className="text-sm font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">{score[key]}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+          <div className="flex justify-between text-xs text-muted-foreground/70 mb-1">
+            <span className="font-medium">{meterLabels[key][0]}</span>
+            <span className="font-medium">{meterLabels[key][1]}</span>
+          </div>
+          <div className="h-3 rounded-full bg-secondary/60 overflow-hidden border border-border/30 shadow-sm">
             <div
               className={`h-full rounded-full transition-all duration-500 ${meterColors[key]}`}
               style={{ width: `${score[key]}%` }}

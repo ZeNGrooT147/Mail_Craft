@@ -64,38 +64,38 @@ const DraftComparison = ({ currentDraft, onPickDraft }: DraftComparisonProps) =>
   };
 
   if (!altDraft && !isLoading) {
-    return (
-      <Button variant="outline" size="sm" onClick={generateAlt} disabled={!currentDraft.trim()} className="h-8 px-3 text-xs gap-1.5 rounded-lg">
-        <GitCompare className="h-3 w-3" /> A/B Variation
-      </Button>
-    );
+      return (
+        <button onClick={generateAlt} disabled={!currentDraft.trim()} className="w-full h-12 px-4 rounded-lg font-semibold text-base bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-primary/25">
+          <GitCompare className="h-5 w-5" /> Generate A/B Variation
+        </button>
+      );
   }
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">A/B Draft Comparison</span>
-        <Button variant="ghost" size="sm" onClick={generateAlt} disabled={isLoading} className="h-7 px-2 text-[11px] gap-1">
-          <GitCompare className="h-3 w-3" /> {isLoading ? "Generating…" : "Regenerate"}
-        </Button>
+          <button onClick={generateAlt} disabled={isLoading} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-secondary hover:bg-secondary/80 text-foreground transition-all flex items-center gap-1.5 disabled:opacity-50">
+            <GitCompare className="h-4 w-4" /> {isLoading ? "Generating…" : "Regenerate"}
+          </button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-border p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Version A (Current)</span>
+              <span className="text-sm font-bold text-foreground">Version A</span>
             <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-primary" onClick={() => { toast.success("Kept Version A"); setAltDraft(""); }}>
               <Check className="h-3 w-3" /> Keep
             </Button>
           </div>
-          <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-6">{currentDraft.slice(0, 400)}{currentDraft.length > 400 ? "…" : ""}</p>
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-5">{currentDraft.slice(0, 300)}{currentDraft.length > 300 ? "…" : ""}</p>
         </div>
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Version B (Alt)</span>
+              <span className="text-sm font-bold text-primary">Version B</span>
             {altDraft && !isLoading && (
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] gap-1 text-primary" onClick={() => { onPickDraft(altDraft); setAltDraft(""); toast.success("Switched to Version B"); }}>
-                <Check className="h-3 w-3" /> Use this
-              </Button>
+                <button className="h-8 px-2 text-xs font-semibold gap-1 text-primary bg-primary/10 hover:bg-primary/20 rounded transition-all flex items-center" onClick={() => { onPickDraft(altDraft); setAltDraft(""); toast.success("Switched to Version B"); }}>
+                  <Check className="h-4 w-4" /> Use this
+                </button>
             )}
           </div>
           {isLoading && !altDraft ? (
