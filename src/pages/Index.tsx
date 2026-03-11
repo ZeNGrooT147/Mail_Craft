@@ -223,9 +223,9 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Mobile tabs — scrollable */}
-        <div className="sm:hidden overflow-x-auto px-3 pb-3">
-          <div className="flex gap-0.5 min-w-max">
+        {/* Mobile tabs — wrapped grid to avoid right-side clipping */}
+        <div className="sm:hidden px-3 pb-3">
+          <div className="grid grid-cols-4 gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activePanel === tab.id;
@@ -235,15 +235,15 @@ const Index = () => {
                   onClick={() => setActivePanel(tab.id)}
                   whileTap={{ scale: 0.98 }}
                   className={`
-                    flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap
+                    flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap min-w-0
                     ${isActive
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
                       : "text-muted-foreground bg-secondary/55 border border-border/60"
                     }
                   `}
                 >
-                  <Icon className="h-3 w-3" />
-                  {tab.label}
+                  <Icon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
                 </motion.button>
               );
             })}

@@ -308,10 +308,10 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
 
   /* ── Left panel: compose form ── */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col h-auto sm:h-full overflow-y-auto custom-scrollbar">
       {/* Header with mode toggle */}
       <div className="px-5 pt-5 pb-4 border-b border-border/80 bg-gradient-to-b from-card to-card/90">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <motion.div
               className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/25"
@@ -325,11 +325,11 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
               <p className="text-xs text-muted-foreground">Fast drafting, refining, and sending</p>
             </div>
           </div>
-          <div className="flex gap-px p-0.5 rounded-xl border border-border bg-secondary/40 shadow-sm">
+          <div className="flex w-full gap-px rounded-xl border border-border bg-secondary/40 p-0.5 shadow-sm sm:w-auto">
             <motion.button
               onClick={() => setMode("compose")}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${
                 mode === "compose" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -339,7 +339,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
             <motion.button
               onClick={() => setMode("reply")}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${
                 mode === "reply" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -892,15 +892,15 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="flex h-full gap-0 rounded-3xl border border-border/80 bg-card/95 overflow-hidden"
+      className="flex h-full flex-col sm:flex-row gap-0 rounded-3xl border border-border/80 bg-card/95 overflow-y-auto sm:overflow-hidden"
       style={{ boxShadow: "var(--shadow-elevated)" }}
     >
       {/* Left: form */}
-      <div className="w-full sm:w-[500px] shrink-0 border-r border-border/80 bg-card/95">
+      <div className="w-full sm:w-[500px] shrink-0 border-b sm:border-b-0 sm:border-r border-border/80 bg-card/95">
         {leftPanel}
       </div>
       {/* Right: output */}
-      <div className={`flex-1 min-w-0 ${!hasDraft ? "hidden sm:flex" : "flex"} flex-col bg-gradient-to-b from-background to-background/90`}>
+      <div className={`flex-1 min-w-0 ${!hasDraft ? "hidden sm:flex" : "flex"} flex-col bg-gradient-to-b from-background to-background/90 min-h-[70vh] sm:min-h-0`}>
         {rightPanel}
       </div>
     </motion.div>
