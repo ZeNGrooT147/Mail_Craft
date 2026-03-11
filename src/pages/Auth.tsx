@@ -5,7 +5,7 @@ import { auth } from "@/integrations/cloud-auth/index";
 import { Button } from "@/components/ui/button";
 import {
   Mail, Loader2, ArrowLeft, Lock, Eye, EyeOff, ArrowRight,
-  Sparkles, Zap, Shield, Globe, Star, CheckCircle2, Send, Palette, Languages,
+  Sparkles, Zap, Shield, Globe, Star, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -22,40 +22,35 @@ const stagger = (i: number, base = 0.12) => ({
 
 /* ── Color tokens ── */
 const c = {
-  panelBg: "hsl(228, 22%, 10%)",
-  panelText: "hsl(220, 15%, 92%)",
-  panelMuted: "hsla(220, 12%, 70%, 0.55)",
-  panelSubtle: "hsla(220, 15%, 30%, 0.35)",
-  coral: "hsl(14, 80%, 56%)",
-  coralLight: "hsl(14, 85%, 68%)",
-  coralGlow: "hsla(14, 80%, 56%, 0.12)",
-  coralBorder: "hsla(14, 80%, 56%, 0.18)",
-  gold: "hsl(45, 93%, 58%)",
-  formBg: "hsl(30, 25%, 98%)",
-  formText: "hsl(228, 18%, 14%)",
-  formMuted: "hsl(220, 10%, 52%)",
+  panelText: "hsl(204, 35%, 96%)",
+  panelMuted: "hsla(204, 22%, 78%, 0.68)",
+  panelSubtle: "hsla(203, 34%, 42%, 0.36)",
+  cyan: "hsl(189, 88%, 56%)",
+  cyanSoft: "hsl(189, 82%, 68%)",
+  amber: "hsl(35, 94%, 58%)",
+  amberSoft: "hsl(35, 95%, 70%)",
+  mint: "hsl(156, 72%, 52%)",
+  glow: "hsla(189, 88%, 56%, 0.16)",
+  glowBorder: "hsla(189, 88%, 56%, 0.32)",
+  formText: "hsl(214, 28%, 14%)",
+  formMuted: "hsl(214, 12%, 46%)",
   inputBg: "hsl(0, 0%, 100%)",
-  inputBorder: "hsl(30, 14%, 88%)",
-  inputShadow: "0 1px 2px hsla(228, 18%, 14%, 0.04)",
+  inputBorder: "hsl(210, 19%, 86%)",
+  inputShadow: "0 1px 2px hsla(214, 28%, 14%, 0.05)",
 };
 
 const features = [
-  { icon: Zap, label: "3-second drafts", sub: "Lightning fast" },
-  { icon: Sparkles, label: "Smart tones", sub: "AI-powered" },
-  { icon: Globe, label: "10+ languages", sub: "Global reach" },
-  { icon: Shield, label: "100% private", sub: "End-to-end" },
+  { icon: Zap, label: "Rapid draft engine", sub: "Write first pass in 3 seconds" },
+  { icon: Sparkles, label: "Intent-aware tone", sub: "Matches formal, warm, or assertive" },
+  { icon: Globe, label: "Global-ready language", sub: "Multilingual responses in one click" },
+  { icon: Shield, label: "Private by default", sub: "Your workspace stays protected" },
 ];
 
-/* ── Floating particles ── */
-const particles = Array.from({ length: 12 }, (_, i) => ({
-  id: i,
-  size: 3 + Math.random() * 4,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  duration: 12 + Math.random() * 18,
-  delay: Math.random() * 5,
-  opacity: 0.08 + Math.random() * 0.12,
-}));
+const metrics = [
+  { value: "10k+", label: "Daily users" },
+  { value: "93%", label: "Time saved" },
+  { value: "24/7", label: "AI assist" },
+];
 
 /* ── Password strength ── */
 const getPasswordStrength = (pw: string) => {
@@ -74,99 +69,33 @@ const getPasswordStrength = (pw: string) => {
   return { score: 5, label: "Excellent", color: "hsl(142, 70%, 38%)" };
 };
 
-/* ── Product mockup (inline SVG-style) ── */
-const ProductMockup = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    transition={{ delay: 0.8, duration: 0.8, ease }}
-    className="mt-6 rounded-xl border overflow-hidden"
-    style={{ background: "hsla(228, 18%, 14%, 0.6)", borderColor: c.panelSubtle }}
-  >
-    {/* Title bar */}
-    <div className="flex items-center gap-2 px-4 py-2.5 border-b" style={{ borderColor: c.panelSubtle }}>
-      <div className="flex gap-1.5">
-        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "hsl(0, 65%, 55%)" }} />
-        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "hsl(45, 90%, 55%)" }} />
-        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "hsl(142, 60%, 45%)" }} />
-      </div>
-      <span className="text-[10px] font-medium ml-2" style={{ color: "hsla(220, 10%, 60%, 0.4)" }}>
-        MailCraft — Compose
-      </span>
-    </div>
-
-    {/* Mock content */}
-    <div className="p-4 space-y-3">
-      {/* To field */}
-      <div className="flex items-center gap-2">
-        <Send className="h-3 w-3" style={{ color: c.coralLight }} />
-        <div className="h-2 rounded-full w-32" style={{ background: "hsla(220, 15%, 30%, 0.4)" }} />
-      </div>
-      {/* Subject */}
-      <div className="flex items-center gap-2">
-        <Mail className="h-3 w-3" style={{ color: "hsla(220, 12%, 70%, 0.35)" }} />
-        <div className="h-2 rounded-full w-44" style={{ background: "hsla(220, 15%, 30%, 0.3)" }} />
-      </div>
-      {/* Divider */}
-      <div className="h-px" style={{ background: c.panelSubtle }} />
-      {/* Body lines */}
-      <div className="space-y-2 pt-1">
-        <div className="h-2 rounded-full w-full" style={{ background: "hsla(220, 15%, 30%, 0.25)" }} />
-        <div className="h-2 rounded-full w-[85%]" style={{ background: "hsla(220, 15%, 30%, 0.2)" }} />
-        <div className="h-2 rounded-full w-[70%]" style={{ background: "hsla(220, 15%, 30%, 0.15)" }} />
-      </div>
-      {/* Tone chips */}
-      <div className="flex gap-1.5 pt-1">
-        {[
-          { icon: Palette, label: "Professional" },
-          { icon: Sparkles, label: "Friendly" },
-          { icon: Languages, label: "Translate" },
-        ].map((chip) => (
-          <span
-            key={chip.label}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-semibold border"
-            style={{
-              background: chip.label === "Professional" ? c.coralGlow : "transparent",
-              borderColor: chip.label === "Professional" ? c.coralBorder : c.panelSubtle,
-              color: chip.label === "Professional" ? c.coralLight : "hsla(220, 12%, 70%, 0.4)",
-            }}
-          >
-            <chip.icon className="h-2.5 w-2.5" />
-            {chip.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  </motion.div>
-);
-
-const CartoonAccents = () => (
+const OrbitAccents = () => (
   <>
     <motion.div
-      className="absolute top-[18%] right-[10%] h-10 w-10 rounded-2xl border flex items-center justify-center"
-      style={{ background: "hsla(14, 80%, 56%, 0.16)", borderColor: "hsla(14, 80%, 56%, 0.34)" }}
-      animate={{ y: [0, -8, 0], rotate: [0, 6, -4, 0] }}
-      transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+      className="hidden xl:flex absolute top-[26%] right-[8%] h-11 w-11 rounded-2xl border items-center justify-center"
+      style={{ background: "hsla(189, 88%, 56%, 0.16)", borderColor: "hsla(189, 88%, 56%, 0.34)" }}
+      animate={{ y: [0, -10, 0], rotate: [0, 8, -6, 0] }}
+      transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
     >
-      <Sparkles className="h-4 w-4" style={{ color: c.coralLight }} />
+      <Sparkles className="h-4 w-4" style={{ color: c.cyanSoft }} />
     </motion.div>
 
     <motion.div
-      className="absolute bottom-[20%] right-[14%] h-9 w-9 rounded-full border flex items-center justify-center"
-      style={{ background: "hsla(258, 65%, 58%, 0.18)", borderColor: "hsla(258, 65%, 58%, 0.32)" }}
-      animate={{ y: [0, 10, 0], x: [0, -4, 0] }}
-      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+      className="hidden xl:flex absolute bottom-[10%] right-[12%] h-10 w-10 rounded-full border items-center justify-center"
+      style={{ background: "hsla(35, 94%, 58%, 0.2)", borderColor: "hsla(35, 94%, 58%, 0.34)" }}
+      animate={{ y: [0, 9, 0], x: [0, -6, 0] }}
+      transition={{ duration: 8.2, repeat: Infinity, ease: "easeInOut" }}
     >
-      <Star className="h-3.5 w-3.5" style={{ color: "hsl(45, 93%, 58%)", fill: "hsl(45, 93%, 58%)" }} />
+      <Star className="h-3.5 w-3.5" style={{ color: c.amber, fill: c.amber }} />
     </motion.div>
 
     <motion.div
-      className="absolute top-[56%] right-[6%] h-11 w-11 rounded-2xl border flex items-center justify-center"
-      style={{ background: "hsla(210, 70%, 52%, 0.16)", borderColor: "hsla(210, 70%, 52%, 0.30)" }}
+      className="hidden xl:flex absolute top-[70%] right-[6%] h-11 w-11 rounded-2xl border items-center justify-center"
+      style={{ background: "hsla(156, 72%, 52%, 0.16)", borderColor: "hsla(156, 72%, 52%, 0.34)" }}
       animate={{ y: [0, -6, 0], rotate: [0, -5, 5, 0] }}
       transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
     >
-      <Send className="h-4 w-4" style={{ color: "hsl(220, 15%, 92%)" }} />
+      <Shield className="h-4 w-4" style={{ color: c.mint }} />
     </motion.div>
   </>
 );
@@ -264,43 +193,47 @@ const Auth = () => {
   return (
     <div className="h-screen w-screen overflow-hidden flex">
       {/* ══════════ LEFT PANEL ══════════ */}
-      <div className="hidden lg:flex lg:w-[48%] xl:w-[50%] relative overflow-hidden" style={{ background: "radial-gradient(120% 120% at 0% 100%, hsla(258, 65%, 58%, 0.32), transparent 56%), linear-gradient(145deg, hsl(228, 26%, 10%), hsl(232, 24%, 7%))" }}>
-        <CartoonAccents />
-        <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "radial-gradient(hsla(220, 12%, 86%, 0.28) 1px, transparent 1px)", backgroundSize: "26px 26px" }} />
-        <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full blur-3xl" style={{ background: "hsla(14, 80%, 56%, 0.24)" }} />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full blur-3xl" style={{ background: "hsla(255, 68%, 58%, 0.20)" }} />
+      <div
+        className="hidden lg:flex lg:w-[47%] xl:w-[49%] relative overflow-hidden"
+        style={{
+          background:
+            "radial-gradient(95% 120% at 0% 100%, hsla(189, 88%, 56%, 0.26), transparent 58%), radial-gradient(70% 80% at 100% 0%, hsla(35, 94%, 58%, 0.20), transparent 50%), linear-gradient(155deg, hsl(214, 58%, 10%), hsl(202, 66%, 7%))",
+        }}
+      >
+        <OrbitAccents />
+        <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "radial-gradient(hsla(204, 34%, 88%, 0.22) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+        <div className="absolute -top-16 -right-24 h-72 w-72 rounded-full blur-3xl" style={{ background: "hsla(189, 88%, 56%, 0.24)" }} />
+        <div className="absolute -bottom-24 -left-16 h-80 w-80 rounded-full blur-3xl" style={{ background: "hsla(35, 94%, 58%, 0.2)" }} />
 
-        <div className="relative z-10 flex flex-col w-full h-full px-8 py-9 xl:px-12 xl:py-12 2xl:px-14 2xl:py-14">
-          <motion.button
-            onClick={() => navigate("/")}
-            {...stagger(0, 0)}
-            className="flex items-center gap-3 group w-fit"
-          >
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center border group-hover:scale-105 transition-transform" style={{ background: c.coralGlow, borderColor: c.coralBorder }}>
-              <Mail className="h-5 w-5" style={{ color: c.coral }} />
+        <div className="relative z-10 flex w-full h-full flex-col px-8 py-9 xl:px-12 xl:py-11 2xl:px-14 2xl:py-14">
+          <motion.button onClick={() => navigate("/")} {...stagger(0, 0)} className="flex items-center gap-3 group w-fit">
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center border transition-transform group-hover:scale-105" style={{ background: c.glow, borderColor: c.glowBorder }}>
+              <Mail className="h-5 w-5" style={{ color: c.cyan }} />
             </div>
-            <span className="font-display text-lg font-bold" style={{ color: c.panelText }}>MailCraft</span>
+            <span className="font-display text-lg font-bold tracking-tight" style={{ color: c.panelText }}>MailCraft</span>
           </motion.button>
 
-          <div className="flex-1 flex flex-col justify-center max-w-[420px] xl:max-w-[520px] gap-8">
+          <div className="flex-1 flex flex-col justify-center gap-8 max-w-[500px]">
             <div>
               <motion.span
                 {...stagger(1, 0.12)}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-semibold tracking-wide border mb-5"
-                style={{ background: "hsla(14, 80%, 56%, 0.14)", borderColor: "hsla(14, 80%, 56%, 0.28)", color: c.coralLight }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-semibold tracking-[0.04em] border mb-6"
+                style={{ background: "hsla(189, 88%, 56%, 0.12)", borderColor: "hsla(189, 88%, 56%, 0.36)", color: c.cyanSoft }}
               >
-                <Star className="h-3 w-3" style={{ color: c.gold, fill: c.gold }} />
-                Trusted by 10,000+ professionals
+                <Star className="h-3 w-3" style={{ color: c.amber, fill: c.amber }} />
+                New workflow-first interface
               </motion.span>
 
               <motion.h2
                 {...stagger(2, 0.12)}
-                className="font-display font-bold text-[2.1rem] xl:text-[2.8rem] leading-[1.08] tracking-[-0.03em]"
+                className="font-display font-bold text-[2.2rem] xl:text-[2.95rem] leading-[1.03] tracking-[-0.03em]"
                 style={{ color: c.panelText }}
               >
-                Write better emails,
+                Turn rough ideas
                 <br />
-                <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(135deg, ${c.coral}, ${c.coralLight})` }}>in less time.</span>
+                <span className="bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(130deg, ${c.cyan}, ${c.amberSoft})` }}>
+                  into clear emails.
+                </span>
               </motion.h2>
 
               <motion.p
@@ -308,31 +241,44 @@ const Auth = () => {
                 className="mt-4 text-[14px] xl:text-[15px] leading-relaxed max-w-md"
                 style={{ color: c.panelMuted }}
               >
-                Draft, refine, and reply with AI support that keeps your tone sharp and your messages clear.
+                Shape intent, keep your voice, and ship polished replies with an assistant tuned for focused communication.
               </motion.p>
             </div>
 
-            <div className="space-y-3.5 rounded-2xl p-4 border" style={{ background: "hsla(225, 22%, 12%, 0.45)", borderColor: "hsla(220, 16%, 40%, 0.32)", backdropFilter: "blur(6px)" }}>
-              {features.map((f, i) => (
-                <motion.div key={f.label} {...stagger(i, 0.28)} className="flex items-center gap-3.5">
-                  <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border" style={{ background: c.coralGlow, borderColor: c.coralBorder }}>
-                    <f.icon className="h-4 w-4" style={{ color: c.coralLight }} />
-                  </div>
-                  <div>
-                    <span className="text-[13px] font-semibold block leading-tight" style={{ color: c.panelText }}>{f.label}</span>
-                    <span className="text-[11px] font-medium" style={{ color: c.panelMuted }}>{f.sub}</span>
-                  </div>
+            <div className="grid grid-cols-3 gap-3">
+              {metrics.map((metric, i) => (
+                <motion.div
+                  key={metric.label}
+                  {...stagger(i, 0.22)}
+                  className="rounded-xl border px-3 py-3"
+                  style={{ background: "hsla(207, 36%, 12%, 0.62)", borderColor: c.panelSubtle }}
+                >
+                  <div className="text-[1rem] font-bold font-display" style={{ color: c.panelText }}>{metric.value}</div>
+                  <div className="text-[10px] font-semibold mt-0.5 uppercase tracking-[0.1em]" style={{ color: c.panelMuted }}>{metric.label}</div>
                 </motion.div>
               ))}
             </div>
 
+            <div className="space-y-3.5 rounded-2xl p-4 border" style={{ background: "hsla(206, 34%, 11%, 0.62)", borderColor: c.panelSubtle, backdropFilter: "blur(8px)" }}>
+              {features.map((f, i) => (
+                <motion.div key={f.label} {...stagger(i, 0.3)} className="flex items-start gap-3.5">
+                  <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border" style={{ background: c.glow, borderColor: c.glowBorder }}>
+                    <f.icon className="h-4 w-4" style={{ color: c.cyanSoft }} />
+                  </div>
+                  <div>
+                    <span className="text-[13px] font-semibold block leading-tight" style={{ color: c.panelText }}>{f.label}</span>
+                    <span className="text-[11px] font-medium leading-relaxed" style={{ color: c.panelMuted }}>{f.sub}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* ══════════ RIGHT PANEL ══════════ */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 xl:p-10 relative" style={{ background: "linear-gradient(180deg, hsl(30, 25%, 98%), hsl(30, 22%, 96%))" }}>
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[340px] h-[340px] rounded-full blur-[130px] pointer-events-none" style={{ background: "hsla(14, 80%, 56%, 0.06)" }} />
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-8 xl:p-10 relative" style={{ background: "linear-gradient(180deg, hsl(205, 38%, 98%), hsl(210, 30%, 95%))" }}>
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[340px] h-[340px] rounded-full blur-[130px] pointer-events-none" style={{ background: "hsla(189, 88%, 56%, 0.08)" }} />
 
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -513,8 +459,8 @@ const Auth = () => {
                 disabled={loading || (!isLogin && !agreedToTerms)}
                 className="w-full h-12 rounded-xl text-sm font-bold group transition-all duration-300 font-display hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60"
                 style={{
-                  background: `linear-gradient(135deg, ${c.coral}, hsl(14, 85%, 48%))`,
-                  boxShadow: "0 4px 14px hsla(14, 80%, 50%, 0.25)",
+                  background: "linear-gradient(135deg, hsl(216, 92%, 58%), hsl(245, 85%, 62%))",
+                  boxShadow: "0 6px 16px hsla(226, 84%, 55%, 0.35)",
                   color: "white",
                 }}
               >
