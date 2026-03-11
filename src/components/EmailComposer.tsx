@@ -554,7 +554,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                 <motion.div
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-0.5 sm:gap-1 flex-wrap"
+                  className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-x-auto sm:overflow-visible pb-0.5 sm:pb-0"
                 >
                   {user && (
                     <Tooltip>
@@ -590,10 +590,10 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         variant="outline"
                         size="sm"
                         onClick={() => checkAndSend(openInGmail)}
-                        className="hidden sm:flex h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
+                        className="inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium shrink-0"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Gmail
+                        <Mail className="h-3 w-3" />
+                        <span className="hidden sm:inline">Gmail</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-[10px]">Open in Gmail</TooltipContent>
@@ -604,10 +604,10 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         variant="outline"
                         size="sm"
                         onClick={() => checkAndSend(openInOutlook)}
-                        className="hidden sm:flex h-9 px-3.5 text-sm gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium"
+                        className="inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium shrink-0"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Outlook
+                        <ExternalLink className="h-3 w-3" />
+                        <span className="hidden sm:inline">Outlook</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-[10px]">Open in Outlook</TooltipContent>

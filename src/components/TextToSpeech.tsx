@@ -30,9 +30,16 @@ const TextToSpeech = ({ text }: TextToSpeechProps) => {
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={toggle} disabled={!text.trim()} className="h-7 px-2 text-[11px] gap-1" title={isSpeaking ? "Stop reading" : "Read aloud"}>
-      {isSpeaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-      {isSpeaking ? "Stop" : "Listen"}
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={toggle}
+      disabled={!text.trim()}
+      className="h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors font-medium shrink-0"
+      title={isSpeaking ? "Stop reading" : "Read aloud"}
+    >
+      {isSpeaking ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+      <span className="hidden sm:inline">{isSpeaking ? "Stop" : "Listen"}</span>
     </Button>
   );
 };
