@@ -1,0 +1,19 @@
+# Runtime & Tooling Requirements
+# Install Bun: https://bun.sh
+bun>=1.0.0
+
+# Or use Node.js (npm/yarn also supported)
+node>=18.0.0
+
+# Install dependencies
+# bun install
+# or: npm install
+
+# Development
+# bun run dev
+
+# Build
+# bun run build
+
+# Test
+# bun run test

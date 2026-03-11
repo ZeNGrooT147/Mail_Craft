@@ -198,7 +198,7 @@ I wanted to talk about the project. Can you send me the files? I need them soon.
 
 Thanks`;
 
-const afterEmail = `Hi Sarah,
+const afterEmail = `Hi Mike Ross,
 
 I hope your week is going well! I wanted to follow up on the Q2 campaign project. Could you share the latest design files by end of day Thursday?
 
@@ -672,7 +672,7 @@ const LandingHero = () => {
               <span className="text-[11px] font-semibold text-muted-foreground/60 w-12 uppercase tracking-wider font-body">To</span>
               <div className="flex-1 h-9 rounded-xl bg-muted/40 flex items-center px-4">
                 <span className="text-sm text-foreground/70 font-body">
-                  sarah@designstudio.com
+                  harvey@designstudio.com
                 </span>
               </div>
             </div>
@@ -687,7 +687,7 @@ const LandingHero = () => {
 
             {/* Email body with typed text effect */}
             <div className="mt-4 rounded-2xl bg-muted/15 border border-border/30 p-5 min-h-[140px] relative">
-              {["Hi Sarah,", "", "I hope this message finds you well! I wanted to reach out regarding the", "Q2 campaign proposal. Our team has put together a comprehensive plan", "that I believe aligns perfectly with your design vision.", "", "Would you be available for a quick call this week to discuss?"].map((line, i) => (
+              {["Hi Harvey Specter,", "", "I hope this message finds you well! I wanted to reach out regarding the", "Q2 campaign proposal. Our team has put together a comprehensive plan", "that I believe aligns perfectly with your design vision.", "", "Would you be available for a quick call this week to discuss?"].map((line, i) => (
                 <p
                   key={i}
                   className={`text-sm font-body leading-relaxed ${line === "" ? "h-3" : "text-foreground/70"} ${i === 0 ? "font-medium text-foreground/80" : ""}`}
