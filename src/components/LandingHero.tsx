@@ -293,35 +293,41 @@ const BeforeAfterSection = () => {
 /* ── Testimonials ── */
 const testimonials = [
   {
-    name: "Sarah Chen",
+    name: "Suhas Gosal",
     role: "Product Manager, Stripe",
     quote: "MailCraft cut my email time in half. The tone control is incredible — every email sounds exactly right.",
     rating: 5,
   },
   {
-    name: "Marcus Williams",
+    name: "Tanzeel Ahmed",
     role: "Founder, NovaTech",
     quote: "I used to dread writing cold outreach emails. Now I draft 10x more in the same time with better results.",
     rating: 5,
   },
   {
-    name: "Aisha Patel",
+    name: "Swati Muttin",
     role: "Head of Sales, Figma",
     quote: "The multi-language feature is a game changer for our global team. Polished emails in any language, instantly.",
+    rating: 5,
+  },
+  {
+    name: "Taniea Leema",
+    role: "Engineering Lead, Notion",
+    quote: "I never thought I'd enjoy writing emails. MailCraft makes every message feel effortless and professional.",
     rating: 5,
   },
 ];
 
 const TestimonialsSection = () => (
-  <section className="max-w-5xl mx-auto px-4 py-14">
-    <div className="text-center mb-10">
+  <section className="max-w-7xl mx-auto px-4 py-14">
+    <div className="text-center mb-16">
       <span className="text-[11px] font-bold text-primary uppercase tracking-[0.3em]">Testimonials</span>
       <h2 className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold text-foreground tracking-tight mt-4">
         Loved by <span className="text-primary">professionals</span>
       </h2>
     </div>
 
-    <div className="grid sm:grid-cols-3 gap-6">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
       {testimonials.map((t, i) => (
         <motion.div
           key={t.name}
@@ -934,6 +940,11 @@ const LandingHero = () => {
           </MagneticButton>
         </div>
       </section>
+
+      {/* Footer */}
+      <div className="w-full border-t border-border/20 py-5 px-6 flex items-center justify-center">
+        <span className="text-xs text-muted-foreground/40 font-medium">Made by <span className="text-primary/60 font-semibold">C14</span></span>
+      </div>
     </div>
   );
 };
