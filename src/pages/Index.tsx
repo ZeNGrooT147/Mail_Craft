@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ThemeToggle from "@/components/ThemeToggle";
+import { toast } from "sonner";
 
 const Index = () => {
   const { user, signOut } = useAuth();
@@ -43,6 +44,22 @@ const Index = () => {
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash);
+    const providerError = searchParams.get("error") || hashParams.get("error");
+
+    if (!providerError) return;
+
+    const errorDescription =
+      searchParams.get("error_description") ||
+      hashParams.get("error_description") ||
+      "Login was cancelled or denied. Please try again.";
+
+    toast.error(errorDescription.replace(/\+/g, " "));
+    navigate("/auth", { replace: true });
+  }, [navigate]);
 
   const handleDraftSaved = useCallback(() => { setDraftsKey((k) => k + 1); }, []);
   const handleLoadDraft = useCallback((draft: Tables<"email_drafts">) => {

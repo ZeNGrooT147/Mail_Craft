@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { auth } from "@/integrations/cloud-auth/index";
@@ -8,7 +8,7 @@ import {
   Sparkles, Zap, Shield, Globe, Star, CheckCircle2, Send, Palette, Languages,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 /* ── Shared easing ── */
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -180,7 +180,29 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const appUrl = (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/$/, "");
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(location.hash.startsWith("#") ? location.hash.slice(1) : location.hash);
+
+    const providerError =
+      searchParams.get("error") ||
+      hashParams.get("error") ||
+      searchParams.get("error_code") ||
+      hashParams.get("error_code");
+
+    if (!providerError) return;
+
+    const errorDescription =
+      searchParams.get("error_description") ||
+      hashParams.get("error_description") ||
+      "Login was cancelled or denied. Please try again.";
+
+    toast.error(errorDescription.replace(/\+/g, " "));
+    navigate("/auth", { replace: true });
+  }, [location.search, location.hash, navigate]);
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
 
@@ -217,7 +239,7 @@ const Auth = () => {
     setGoogleLoading(true);
     try {
       const { error } = await auth.signInWithOAuth("google", {
-        redirect_uri: appUrl,
+        redirect_uri: `${appUrl}/auth`,
       });
       if (error) throw error;
     } catch (error: any) {
