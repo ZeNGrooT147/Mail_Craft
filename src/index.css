@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 20% 99%;
+    --foreground: 220 15% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 12%;
+
+    --primary: 14 80% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 15% 95%;
+    --secondary-foreground: 220 10% 38%;
+
+    --muted: 30 12% 95%;
+    --muted-foreground: 220 8% 50%;
+
+    --accent: 30 15% 95%;
+    --accent-foreground: 220 15% 12%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 10% 91%;
+    --input: 30 10% 91%;
+    --ring: 14 80% 56%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 30 15% 97%;
+    --sidebar-foreground: 220 10% 38%;
+    --sidebar-primary: 14 80% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 15% 95%;
+    --sidebar-accent-foreground: 220 15% 12%;
+    --sidebar-border: 30 10% 91%;
+    --sidebar-ring: 14 80% 56%;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+
+    /* Draft highlight area */
+    --draft-bg: 14 90% 98%;
+    --draft-border: 14 60% 88%;
+    --draft-glow: 14 80% 56%;
+
+    /* Tool section accents */
+    --tool-tone: 250 65% 55%;
+    --tool-coach: 160 60% 42%;
+    --tool-compliance: 35 85% 52%;
+    --tool-subjects: 14 80% 56%;
+
+    /* Success / info */
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --info: 210 70% 52%;
+    --info-foreground: 0 0% 100%;
+
+    --glass-bg: hsla(30, 20%, 99%, 0.85);
+    --glass-border: hsla(220, 10%, 50%, 0.08);
+    --glass-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+    --shadow-elevated: 0 4px 20px -4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+    --shadow-card-hover: 0 12px 40px -12px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark {
+    --background: 225 15% 6%;
+    --foreground: 30 10% 93%;
+
+    --card: 225 12% 9%;
+    --card-foreground: 30 10% 93%;
+
+    --popover: 225 12% 9%;
+    --popover-foreground: 30 10% 93%;
+
+    --primary: 14 80% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 225 10% 13%;
+    --secondary-foreground: 30 8% 62%;
+
+    --muted: 225 10% 13%;
+    --muted-foreground: 30 5% 48%;
+
+    --accent: 225 10% 13%;
+    --accent-foreground: 30 10% 93%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 225 10% 15%;
+    --input: 225 10% 15%;
+    --ring: 14 80% 58%;
+
+    --sidebar-background: 225 12% 7%;
+    --sidebar-foreground: 30 8% 55%;
+    --sidebar-primary: 14 80% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 10% 12%;
+    --sidebar-accent-foreground: 30 10% 93%;
+    --sidebar-border: 225 10% 15%;
+    --sidebar-ring: 14 80% 58%;
+
+    --draft-bg: 14 30% 10%;
+    --draft-border: 14 40% 22%;
+    --draft-glow: 14 80% 58%;
+
+    --tool-tone: 250 65% 60%;
+    --tool-coach: 160 55% 48%;
+    --tool-compliance: 35 80% 55%;
+    --tool-subjects: 14 80% 58%;
+
+    --success: 152 55% 48%;
+    --success-foreground: 0 0% 100%;
+    --info: 210 65% 58%;
+    --info-foreground: 0 0% 100%;
+
+    --glass-bg: hsla(225, 12%, 9%, 0.85);
+    --glass-border: hsla(30, 10%, 93%, 0.06);
+    --glass-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+    --shadow-elevated: 0 4px 20px -4px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --shadow-card-hover: 0 12px 40px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    font-feature-settings: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-input {
+    @apply w-full bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground text-sm py-3 transition-colors duration-200;
+  }
+
+  .glass-input:focus {
+    @apply placeholder:text-muted-foreground/70;
+  }
+
+  .tone-chip {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer select-none border;
+  }
+
+  .tone-chip-active {
+    @apply bg-primary text-primary-foreground border-primary;
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.25);
+  }
+
+  .tone-chip-inactive {
+    @apply bg-secondary text-muted-foreground border-transparent hover:border-border hover:text-foreground;
+  }
+
+  .field-label {
+    @apply text-xs font-medium text-muted-foreground w-16 shrink-0;
+  }
+
+  .section-divider {
+    @apply border-t border-border;
+  }
+
+  .floating-orb {
+    display: none;
+  }
+
+  /* Premium card hover effect */
+  .card-premium {
+    @apply rounded-2xl border border-border bg-card transition-all duration-300;
+    box-shadow: var(--glass-shadow);
+  }
+  .card-premium:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: hsl(var(--primary) / 0.15);
+    transform: translateY(-1px);
+  }
+
+  /* Gradient text utility */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Smooth scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.15);
+    border-radius: 999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
+}
