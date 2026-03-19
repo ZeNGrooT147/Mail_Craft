@@ -1,0 +1,15 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "MailCraft",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://mailcraft-hq.vercel.app/",
+  "image": "https://mailcraft-hq.vercel.app/og-image.png",
+  "description": "MailCraft is an AI-powered email assistant for drafting, optimizing, and managing professional email communication.",
+  "publisher": {
+    "@type": "Organization",
+    "name": "MailCraft",
+    "url": "https://mailcraft-hq.vercel.app/"
+  }
+}
