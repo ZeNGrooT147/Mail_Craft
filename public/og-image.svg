@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">MailCraft social preview image</title>
+  <desc id="desc">Preview card for MailCraft AI Email Assistant.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fcfaf8"/>
+      <stop offset="100%" stop-color="#f8efe9"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f26743"/>
+      <stop offset="100%" stop-color="#ff8a4d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1010" cy="105" r="190" fill="#f26743" fill-opacity="0.14"/>
+  <circle cx="160" cy="560" r="220" fill="#f26743" fill-opacity="0.1"/>
+  <rect x="88" y="86" width="1024" height="456" rx="28" fill="#ffffff" stroke="#f4ddd4"/>
+  <rect x="132" y="152" width="64" height="64" rx="16" fill="url(#accent)"/>
+  <path d="M146 168h36v30h-36z" fill="#fff"/>
+  <path d="M146 168l18 14 18-14" fill="none" stroke="#f26743" stroke-width="2"/>
+  <text x="220" y="192" font-size="56" font-family="'Space Grotesk', 'Segoe UI', sans-serif" font-weight="700" fill="#202733">MailCraft</text>
+  <text x="132" y="274" font-size="40" font-family="'DM Sans', 'Segoe UI', sans-serif" font-weight="600" fill="#364050">AI Email Assistant Workspace</text>
+  <text x="132" y="336" font-size="28" font-family="'DM Sans', 'Segoe UI', sans-serif" fill="#5f6a7a">Draft faster. Improve tone. Send confidently.</text>
+  <rect x="132" y="386" width="282" height="64" rx="16" fill="url(#accent)"/>
+  <text x="174" y="428" font-size="30" font-family="'DM Sans', 'Segoe UI', sans-serif" font-weight="700" fill="#ffffff">Try MailCraft</text>
+  <text x="1060" y="584" text-anchor="end" font-size="24" font-family="'DM Sans', 'Segoe UI', sans-serif" fill="#7e8897">mailcraft-hq.vercel.app</text>
+</svg>

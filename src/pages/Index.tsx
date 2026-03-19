@@ -74,27 +74,31 @@ const Index = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
-        <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-          <div className="max-w-5xl mx-auto flex items-center justify-between px-6 h-14">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20">
-                <Mail className="h-4 w-4 text-primary-foreground" />
+        <header>
+          <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
+            <div className="max-w-5xl mx-auto flex items-center justify-between px-6 h-14">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20">
+                  <Mail className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-display text-lg font-bold text-foreground tracking-tight">MailCraft</span>
               </div>
-              <span className="font-display text-lg font-bold text-foreground tracking-tight">MailCraft</span>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/auth")}
+                  className="min-h-12 px-5 text-sm gap-1.5 rounded-lg font-semibold shadow-md shadow-primary/20"
+                >
+                  Get Started
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Button
-                size="sm"
-                onClick={() => navigate("/auth")}
-                className="h-9 px-5 text-xs gap-1.5 rounded-lg font-semibold shadow-md shadow-primary/20"
-              >
-                Get Started
-              </Button>
-            </div>
-          </div>
-        </nav>
-        <LandingHero />
+          </nav>
+        </header>
+        <main>
+          <LandingHero />
+        </main>
         <footer className="text-center py-10 border-t border-border">
           <p className="text-xs text-muted-foreground/40">Built with care. Your emails are never stored without consent.</p>
         </footer>

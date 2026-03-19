@@ -1,0 +1,24 @@
+{
+  "name": "MailCraft",
+  "short_name": "MailCraft",
+  "description": "AI-powered email composition assistant with smart drafting, tone analysis, and productivity tools.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fcfaf8",
+  "theme_color": "#f26743",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -233,13 +233,13 @@ const BeforeAfterSection = () => {
           >
             <button
               onClick={() => setShowAfter(false)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold font-display transition-all duration-300 ${!showAfter ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-6 min-h-12 rounded-full text-sm font-semibold font-display transition-all duration-300 ${!showAfter ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
             >
               Before
             </button>
             <button
               onClick={() => setShowAfter(true)}
-              className={`px-6 py-2.5 rounded-full text-sm font-semibold font-display transition-all duration-300 ${showAfter ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-6 min-h-12 rounded-full text-sm font-semibold font-display transition-all duration-300 ${showAfter ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
             >
               After AI ✨
             </button>
