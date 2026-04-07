@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FileText, ListChecks, Loader2, ChevronDown, ChevronUp } from "lucide-react";
@@ -34,28 +35,7 @@ const EmailSummarizer = ({ emailText }: EmailSummarizerProps) => {
       });
       if (!resp.ok || !resp.body) { toast.error("Failed to analyze."); return; }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) !== -1) {
-          let line = buf.slice(0, idx);
-          buf = buf.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (json === "[DONE]") return;
-          try {
-            const c = JSON.parse(json).choices?.[0]?.delta?.content;
-            if (c) { full += c; setter(full); }
-          } catch { buf = line + "\n" + buf; break; }
-        }
-      }
+      await readSseText(resp, (_, full) => setter(full));
     } catch { toast.error("Something went wrong."); }
     finally { setLoading(null); }
   }, [emailText]);

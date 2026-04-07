@@ -50,7 +50,43 @@ OUTPUT RULE:
 - Output only final email text (no markdown, no labels, no explanations).
 `;
 
-const WRITING_MODES = new Set(["draft", "refine", "reply", "subject-lines", "ab-draft"]);
+const COMPLETE_OUTPUT_GUARDRAIL = `You are an expert communication assistant. Your output must be complete, fully expanded, and never truncated.
+
+Critical Requirements:
+- Do NOT shorten, summarize, or cut off content unless the task explicitly asks for a summary.
+- Always generate the full response from start to end, including all required sections and closing lines.
+- Do not stop mid-sentence or mid-paragraph.
+- If output is long, continue writing until fully finished.
+- Avoid placeholders like [brief], [explain], [etc.]; replace them with actual content.
+- Maintain coherence across the entire output with no abrupt endings.
+
+Feature-specific enforcement:
+- Tone: fully apply tone across the entire response.
+- A/B Test: generated variant must be complete end-to-end.
+- Coach: include complete improvements and explanations, not partial hints.
+- Compliance: include all required categories, no skipped sections.
+- Subjects: return full requested count with complete subject lines.
+
+Before finishing, verify internally: "Is this response complete and not cut off?" If not, continue writing.`;
+
+const COMPLETE_OUTPUT_GUARDRAIL_MODES = new Set([
+  "draft",
+  "refine",
+  "reply",
+  "ab-draft",
+  "grammar-check",
+  "compliance-check",
+  "subject-lines",
+  "summarize",
+  "extract-actions",
+  "quick-replies",
+  "cold-optimize",
+  "email-to-task",
+  "negotiation",
+  "chat",
+]);
+
+const WRITING_MODES = new Set(["draft", "refine", "reply", "ab-draft"]);
 
 type FewShotTurn = { role: "user" | "model"; text: string };
 
@@ -97,8 +133,12 @@ const FEW_SHOT_EXAMPLES: Record<string, FewShotTurn[]> = {
 
 const getSystemPromptForMode = (mode: string) => {
   const taskPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.draft;
-  if (!WRITING_MODES.has(mode)) return taskPrompt;
-  return `${MASTER_SYSTEM_PROMPT}\n${taskPrompt}`;
+  const basePrompt = WRITING_MODES.has(mode)
+    ? `${MASTER_SYSTEM_PROMPT}\n${taskPrompt}`
+    : taskPrompt;
+
+  if (!COMPLETE_OUTPUT_GUARDRAIL_MODES.has(mode)) return basePrompt;
+  return `${COMPLETE_OUTPUT_GUARDRAIL}\n\n${basePrompt}`;
 };
 
 const buildGeminiContents = (
@@ -126,13 +166,13 @@ const SYSTEM_PROMPTS: Record<string, string> = {
   refine:
     "Improve the email for clarity, flow, and professionalism while preserving intent exactly.\n\nFOCUS:\n- Remove robotic wording and weak transitions.\n- Preserve personality and natural rhythm.\n- Rephrase and polish only; do not add new asks/tasks/questions/actions unless they already exist in input.\n- Do not insert clarifying questions unless explicitly requested.",
   "subject-lines":
-    "Generate exactly 5 subject lines.\nRules: under 60 characters, distinct style per option, tightly aligned with content, avoid generic business cliches.\nOutput as a numbered list only.",
+    "Generate exactly 5 subject lines.\nRules: under 60 characters, distinct style per option, tightly aligned with content, avoid generic business cliches. Never use placeholders like [Name], [Your Name], [Company], [Date]. If placeholders appear in the email/context, infer a concrete topic phrase from surrounding content and produce a clean subject without placeholders.\nOutput strictly as a numbered list only (1. ... 2. ... 3. ... 4. ... 5. ...). No preface text, no headings, no explanations.",
   "grammar-check":
-    "You are a professional writing coach and editor. Analyze the provided email comprehensively for: **Grammar & Spelling** (errors, typos), **Clarity & Structure** (sentence restructuring, jargon simplification), **Tone & Professionalism** (politeness enhancement, consistent tone), **Voice** (passive to active voice suggestions), **Readability** (complex word alternatives). Provide specific suggestions with before/after examples. Be constructive and actionable.",
+    "You are a strict email writing coach. Analyze the email and return only actionable improvements in this exact plain-text format:\n\n1) [Category] [Severity] Issue: <specific issue> | Rewrite: <better wording> | Why: <short reason>\n2) [Category] [Severity] Issue: ...\n\nRules:\n- Categories allowed: Grammar, Clarity, Tone, Professionalism, Structure, Readability.\n- Severity allowed: High, Medium, Low.\n- Return 3 to 6 items.\n- Each Rewrite must be concrete and directly usable.\n- No JSON, no markdown code fences, no headings, no intro/outro lines.",
   reply:
     "Write a thoughtful human reply using the provided context/key points as required input.\n\nRULES:\n- Address the sender's points clearly.\n- Rephrase and structure provided information; do not add new asks/questions/actions unless explicitly present in input.\n- Sound like a deliberate human response, not a template.\n- Use placeholders if details are missing.\n- Finish with a complete professional closing.",
   "tone-analysis":
-    "You are a tone analysis expert. Analyze the provided email text and output exactly 4 numbers (0-100) on the first 4 lines, then a short label on the 5th line:\nLine 1: Formality score (0=very casual, 100=very formal)\nLine 2: Friendliness score (0=cold/distant, 100=very warm)\nLine 3: Confidence score (0=tentative/uncertain, 100=very assertive)\nLine 4: Urgency score (0=relaxed, 100=very urgent)\nLine 5: A 2-3 word overall tone label (e.g. 'Professional & Warm', 'Casual & Friendly')\n\nScoring rules:\n- Use the full range when justified; do not default to 50.\n- Urgency should increase strongly for deadlines, immediate asks, escalation words, or time pressure.\n- Confidence should increase for direct commitments and decisive statements.\n- Formality should increase for business wording and structured etiquette.\n- Friendliness should increase for warm appreciation and supportive language.\n\nOutput ONLY these 5 lines, nothing else.",
+    "You are a tone analysis expert. Analyze the provided email text and output exactly 4 numbers (0-100) on the first 4 lines, then a short label on the 5th line:\nLine 1: Formality score (0=very casual, 100=very formal)\nLine 2: Friendliness score (0=cold/distant, 100=very warm)\nLine 3: Confidence score (0=tentative/uncertain, 100=very assertive)\nLine 4: Urgency score (0=relaxed, 100=very urgent)\nLine 5: A 2-3 word overall tone label (e.g. 'Professional & Warm', 'Casual & Friendly')\n\nScoring rules:\n- Use the full range when justified; do not default to 50.\n- Urgency should increase strongly for deadlines, immediate asks, escalation words, or time pressure.\n- Confidence should increase for direct commitments and decisive statements.\n- Formality should increase for business wording and structured etiquette.\n- Friendliness should increase for warm appreciation and supportive language.\n- If input includes a line 'Requested tone: <Tone>', factor this as intended tone and reflect alignment in scoring (especially urgency for Requested tone: Urgent).\n\nOutput ONLY these 5 lines, nothing else.",
   summarize:
     "You are an expert email summarizer. Read the provided email and produce a concise TL;DR summary in 2-3 sentences. Focus on the key message, any requests, and the overall intent. Output only the summary, no headers.",
   "extract-actions":
@@ -146,11 +186,11 @@ const SYSTEM_PROMPTS: Record<string, string> = {
   negotiation:
     "You are an expert negotiation email writer. The user will provide context about a negotiation (salary, vendor pricing, contract terms, etc). Write a professional, persuasive email that: presents the position clearly with supporting rationale, uses collaborative language, proposes specific terms, maintains professionalism, and includes a clear next step. Output only the email body.",
   "compliance-check":
-    "You are a corporate communications compliance expert. Analyze the provided email for: **Professionalism** (inappropriate language, slang), **Bias & Inclusivity** (gender bias, cultural insensitivity, ageism), **Toxicity** (aggressive or passive-aggressive language), **Corporate Etiquette** (proper greetings, appropriate sign-offs, formal structure), **Confidentiality** (potential data leaks, sensitive references). Rate each category (Pass/Warning/Fail) and provide specific suggestions. Be thorough but concise.",
+    "You are a corporate communications compliance reviewer. Assess exactly these categories: Professionalism, Bias & Inclusivity, Toxicity, Corporate Etiquette, Confidentiality.\n\nReturn exactly 5 lines in this format only:\n[Pass|Warning|Fail] <Category>: <specific finding>. Suggestion: <specific fix>\n\nRules:\n- One line per category, no extra headings or summaries.\n- Keep each line concise but specific and complete.\n- If no issue, still provide a short positive note and a minor improvement suggestion.\n- Do not output preface text like 'Here is your analysis'.",
   categorize:
     "You are an email categorization expert. Analyze the provided email and output exactly 2 lines:\nLine 1: Category (one of: urgent, action-required, fyi, social, newsletter, spam)\nLine 2: Priority (one of: high, medium, low)\nOutput ONLY these 2 lines, nothing else.",
   "ab-draft":
-    "You are an expert email writer. The user will provide an existing email draft. Write a completely different alternative version of the same email with a different approach, structure, and phrasing while keeping the same intent and key information. Output only the alternative email body.",
+    "You are an expert email writer creating A/B variants. Given the original draft, produce a stronger alternative with different structure, tighter wording, and same intent.\n\nOutput format (exactly):\n[VARIANT]\n<full alternative email body>\n[/VARIANT]\n[CHANGES]\n- <what changed and why>\n- <what changed and why>\n- <what changed and why>\n[/CHANGES]\n\nRules:\n- Keep factual intent and key points unchanged.\n- Do not add new asks/questions/actions unless already present.\n- Keep tone professional and human.",
   chat:
     "You are MailCraft AI, a helpful email writing assistant. Help users brainstorm email ideas, improve their writing, suggest approaches for difficult conversations, and answer questions about email etiquette and best practices. Be concise, friendly, and actionable. Use markdown formatting for clarity when helpful.",
 };
@@ -312,6 +352,90 @@ serve(async (req) => {
           "Cache-Control": "no-cache",
           Connection: "keep-alive",
           "X-AI-Model": toneModel || "tone-fast-path",
+        },
+      });
+    }
+
+    if (mode === "grammar-check") {
+      const coachText = messages
+        .map((m) => (typeof m?.content === "string" ? m.content : ""))
+        .join("\n\n")
+        .trim();
+
+      if (!coachText) {
+        return new Response(
+          JSON.stringify({ error: "No text provided for grammar-check" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const fastModels = [
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        ...modelCandidates,
+      ].filter((model, index, all) => all.indexOf(model) === index);
+
+      let coachPayload = "";
+      let coachModel = "";
+      let coachStatus = 500;
+      let coachErrorText = "";
+
+      for (const modelName of fastModels) {
+        const coachResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM_PROMPTS["grammar-check"] }] },
+              contents: [{ role: "user", parts: [{ text: coachText }] }],
+              generationConfig: {
+                temperature: 0.25,
+                topP: 0.85,
+                maxOutputTokens: 700,
+              },
+            }),
+          }
+        );
+
+        if (coachResp.ok) {
+          const coachJson = await coachResp.json();
+          coachPayload = (coachJson?.candidates?.[0]?.content?.parts ?? [])
+            .map((part: { text?: string }) => part?.text ?? "")
+            .join("")
+            .trim();
+          coachModel = modelName;
+          break;
+        }
+
+        coachStatus = coachResp.status;
+        coachErrorText = await coachResp.text();
+      }
+
+      if (!coachPayload) {
+        return new Response(
+          JSON.stringify({ error: "Grammar-check failed", detail: coachErrorText || "No response" }),
+          { status: coachStatus || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: coachPayload } }] })}\n\n`;
+          controller.enqueue(encoder.encode(payload));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-AI-Model": coachModel || "coach-fast-path",
         },
       });
     }

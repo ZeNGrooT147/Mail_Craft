@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
 import { Button } from "@/components/ui/button";
 import { ListChecks, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
@@ -31,25 +32,7 @@ const EmailToTask = ({ emailText }: EmailToTaskProps) => {
       });
       if (!resp.ok || !resp.body) { toast.error("Failed to extract tasks."); setIsLoading(false); return; }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "", fullText = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, idx);
-          textBuffer = textBuffer.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const j = line.slice(6).trim();
-          if (j === "[DONE]") break;
-          try { const p = JSON.parse(j); const c = p.choices?.[0]?.delta?.content; if (c) { fullText += c; setResult(fullText); } }
-          catch { textBuffer = line + "\n" + textBuffer; break; }
-        }
-      }
+      await readSseText(resp, (_, fullText) => setResult(fullText));
     } catch { toast.error("Something went wrong."); }
     finally { setIsLoading(false); }
   };

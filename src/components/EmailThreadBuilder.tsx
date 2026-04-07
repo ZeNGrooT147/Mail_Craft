@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -144,30 +145,7 @@ const EmailThreadBuilder = () => {
       if (resp.status === 402) { toast.error("AI credits depleted. Please top up in workspace settings."); return; }
       if (!resp.ok || !resp.body) { toast.error("Failed to generate."); return; }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let fullText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, idx);
-          textBuffer = textBuffer.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) { fullText += content; setAiReply(fullText); }
-          } catch { textBuffer = line + "\n" + textBuffer; break; }
-        }
-      }
+      await readSseText(resp, (_, fullText) => setAiReply(fullText));
     } catch { toast.error("Failed to generate reply."); }
     finally { setGenerating(false); }
   };

@@ -29,6 +29,7 @@ import { useEmailEvents } from "@/hooks/useEmailEvents";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { supabase } from "@/integrations/supabase/client";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseTextWithStatus } from "@/lib/sse";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   Sparkles, Copy, Trash2, Loader2, Mail, ArrowRight,
@@ -246,66 +247,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
         throw new Error(detail || "Failed to generate");
       }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let fullText = "";
-      let sawDone = false;
-
-      const processSseLine = (rawLine: string) => {
-        let line = rawLine;
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (line.startsWith(":") || line.trim() === "") return false;
-        if (!line.startsWith("data: ")) return false;
-
-        const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") {
-          sawDone = true;
-          return true;
-        }
-
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) {
-          fullText += content;
-          onChunk(fullText);
-        }
-        return false;
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          if (textBuffer.trim().length > 0) {
-            const remainingLines = textBuffer.split("\n");
-            for (const remainingLine of remainingLines) {
-              if (!remainingLine.trim()) continue;
-              try {
-                processSseLine(remainingLine);
-              } catch {
-                // Ignore trailing malformed/non-JSON bytes.
-              }
-            }
-          }
-          break;
-        }
-        textBuffer += decoder.decode(value, { stream: true });
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          const line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-          try {
-            const shouldStop = processSseLine(line);
-            if (shouldStop) {
-              return { fullText, completed: true };
-            }
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
-      }
-      return { fullText, completed: sawDone };
+      const result = await readSseTextWithStatus(resp, (_chunk, fullText) => onChunk(fullText));
+      return { fullText: result.fullText, completed: result.completed };
     },
     []
   );
@@ -982,6 +925,24 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                     />
                   </div>
 
+                  {draftEditedSinceAnalysis && (
+                    <div className="px-4 sm:px-6 pb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isGenerating || !draft.trim()}
+                        onClick={() => {
+                          setDraftEditedSinceAnalysis(false);
+                          refineDraft("Polish this edited draft while preserving my exact points, tone, and intent. Improve clarity, grammar, and flow. Do not add new asks, questions, or actions.");
+                        }}
+                        className="h-9 px-4 text-xs rounded-xl border-primary/30 hover:bg-primary hover:text-primary-foreground transition-all font-semibold"
+                      >
+                        Refine This Edited Draft
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Inline stats bar */}
                   <div className="px-6 py-3 border-t border-border bg-card/95">
                     <div className="flex items-center gap-3 flex-wrap">
@@ -1131,12 +1092,12 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                           className="overflow-visible"
                         >
                           <div className="p-5 sm:p-6 pb-8 border-t border-border/40 bg-gradient-to-b from-background/50 to-background overflow-visible">
-                            {openToolSection === "tone" && <ToneAnalyzer text={draft} triggerKey={analysisKey} />}
+                            {openToolSection === "tone" && <ToneAnalyzer text={draft} triggerKey={analysisKey} selectedTone={tone} />}
                             {openToolSection === "ab" && <DraftComparison currentDraft={draft} onPickDraft={setDraft} />}
                             {openToolSection === "coach" && <GrammarCheck emailBody={draft} triggerKey={analysisKey} />}
                             {openToolSection === "compliance" && <ComplianceCheck emailBody={draft} triggerKey={analysisKey} />}
                             {openToolSection === "cold" && <ColdEmailOptimizer emailBody={draft} />}
-                            {openToolSection === "subjects" && <SubjectLineSuggestions emailBody={draft} context={context} onSelectSubject={(s) => setSubject(s)} triggerKey={analysisKey} />}
+                            {openToolSection === "subjects" && <SubjectLineSuggestions emailBody={draft} context={context} currentSubject={subject} onSelectSubject={(s) => setSubject(s)} triggerKey={analysisKey} />}
                           </div>
                         </motion.div>
                       )}

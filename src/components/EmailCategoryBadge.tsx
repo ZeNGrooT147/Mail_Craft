@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Info, CheckCircle2, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,25 +47,7 @@ const EmailCategoryBadge = ({ emailText }: EmailCategoryBadgeProps) => {
         });
         if (!resp.ok || !resp.body) return;
 
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let textBuffer = "", fullText = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          textBuffer += decoder.decode(value, { stream: true });
-          let idx: number;
-          while ((idx = textBuffer.indexOf("\n")) !== -1) {
-            let line = textBuffer.slice(0, idx);
-            textBuffer = textBuffer.slice(idx + 1);
-            if (line.endsWith("\r")) line = line.slice(0, -1);
-            if (!line.startsWith("data: ")) continue;
-            const j = line.slice(6).trim();
-            if (j === "[DONE]") break;
-            try { const p = JSON.parse(j); const c = p.choices?.[0]?.delta?.content; if (c) fullText += c; }
-            catch { textBuffer = line + "\n" + textBuffer; break; }
-          }
-        }
+        const fullText = await readSseText(resp);
 
         const lines = fullText.trim().split("\n").map(l => l.trim().toLowerCase());
         if (lines[0]) setCategory(lines[0]);

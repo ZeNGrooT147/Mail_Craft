@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
+import type { Tone } from "@/components/ToneSelector";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,6 +18,7 @@ interface ToneScore {
 interface ToneAnalyzerProps {
   text: string;
   triggerKey?: number;
+  selectedTone?: Tone;
 }
 
 const meterColors: Record<string, string> = {
@@ -32,7 +35,7 @@ const meterLabels: Record<string, [string, string]> = {
   urgency: ["Relaxed", "Urgent"],
 };
 
-const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
+const ToneAnalyzer = ({ text, triggerKey, selectedTone }: ToneAnalyzerProps) => {
   const [score, setScore] = useState<ToneScore | null>(null);
   const [loading, setLoading] = useState(false);
   const lastTrigger = useRef<number | undefined>(undefined);
@@ -42,6 +45,10 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
     if (!text.trim()) return;
     setLoading(true);
     try {
+      const analysisInput = selectedTone
+        ? `Requested tone: ${selectedTone}\n\nEmail text:\n${text}`
+        : text;
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
@@ -49,7 +56,7 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
           ...(await getAiHeaders()),
         },
         body: JSON.stringify({
-          messages: [{ role: "user", content: text }],
+          messages: [{ role: "user", content: analysisInput }],
           mode: "tone-analysis",
         }),
       });
@@ -58,30 +65,7 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
       if (resp.status === 402) { toast.error("AI credits exhausted."); return; }
       if (!resp.ok || !resp.body) { toast.error("Failed to analyze tone."); return; }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let fullText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, idx);
-          textBuffer = textBuffer.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) fullText += content;
-          } catch { textBuffer = line + "\n" + textBuffer; break; }
-        }
-      }
+      const fullText = await readSseText(resp);
 
       const lines = fullText
         .split("\n")
@@ -105,11 +89,39 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
           ? (friendliness >= 60 ? "Professional & Warm" : "Formal & Direct")
           : (friendliness >= 65 ? "Casual & Friendly" : "Neutral");
 
+      let calibratedFormality = formality;
+      let calibratedFriendliness = friendliness;
+      let calibratedConfidence = confidence;
+      let calibratedUrgency = urgency;
+
+      // Align score floor/ceiling with explicitly selected compose tone.
+      switch (selectedTone) {
+        case "Urgent":
+          calibratedUrgency = Math.max(calibratedUrgency, 70);
+          break;
+        case "Formal":
+          calibratedFormality = Math.max(calibratedFormality, 75);
+          break;
+        case "Casual":
+          calibratedFormality = Math.min(calibratedFormality, 35);
+          break;
+        case "Friendly":
+        case "Empathetic":
+          calibratedFriendliness = Math.max(calibratedFriendliness, 65);
+          break;
+        case "Confident":
+        case "Persuasive":
+          calibratedConfidence = Math.max(calibratedConfidence, 70);
+          break;
+        default:
+          break;
+      }
+
       setScore({
-        formality,
-        friendliness,
-        confidence,
-        urgency,
+        formality: calibratedFormality,
+        friendliness: calibratedFriendliness,
+        confidence: calibratedConfidence,
+        urgency: calibratedUrgency,
         label: labelCandidate || labelFromScores,
       });
     } catch {
@@ -117,7 +129,7 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
     } finally {
       setLoading(false);
     }
-  }, [text]);
+  }, [selectedTone, text]);
 
   // Auto-run when triggerKey changes
   useEffect(() => {

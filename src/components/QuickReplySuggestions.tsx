@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { getAiHeaders } from "@/lib/aiHeaders";
+import { readSseText } from "@/lib/sse";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -35,33 +36,7 @@ const QuickReplySuggestions = ({ emailText, onSelectReply }: QuickReplySuggestio
       if (resp.status === 402) { toast.error("AI credits exhausted."); return; }
       if (!resp.ok || !resp.body) { toast.error("Failed to generate."); return; }
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let full = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        let idx: number;
-        while ((idx = buf.indexOf("\n")) !== -1) {
-          let line = buf.slice(0, idx);
-          buf = buf.slice(idx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (json === "[DONE]") {
-            // Parse the final text into suggestions
-            const lines = full.split("\n").map(l => l.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
-            setSuggestions(lines.slice(0, 3));
-            return;
-          }
-          try {
-            const c = JSON.parse(json).choices?.[0]?.delta?.content;
-            if (c) full += c;
-          } catch { buf = line + "\n" + buf; break; }
-        }
-      }
+      const full = await readSseText(resp);
       const lines = full.split("\n").map(l => l.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
       setSuggestions(lines.slice(0, 3));
     } catch { toast.error("Something went wrong."); }
