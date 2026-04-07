@@ -124,6 +124,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   const toolsSectionRef = useRef<HTMLDivElement | null>(null);
   const cacheHydratedRef = useRef(false);
   const lastGeneratedToneRef = useRef<Tone | null>(null);
+  const lastAnalyzedDraftRef = useRef("");
   const composerCacheKey = getComposerCacheKey(user?.id);
 
   useEffect(() => {
@@ -343,6 +344,9 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
       const normalizedFinalText = normalizeDraftEnding(finalDraftText);
       if (normalizedFinalText && normalizedFinalText !== finalDraftText) {
         setDraft(normalizedFinalText);
+        lastAnalyzedDraftRef.current = normalizedFinalText;
+      } else {
+        lastAnalyzedDraftRef.current = finalDraftText;
       }
       lastGeneratedToneRef.current = tone;
 
@@ -368,18 +372,32 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   } : null;
 
   const refineDraft = useCallback(
-    async (instruction: string) => {
+    async (instruction: string, options?: { useEditedContext?: boolean }) => {
       if (!user) { toast.error("Please sign in to use AI refine."); return; }
       if (!draft.trim()) { toast.error("Generate a draft first."); return; }
       setIsGenerating(true);
       const previousDraft = draft;
       setDraft("");
       try {
-        await streamResponse(
-          [{ role: "user", content: `Here is the current email draft:\n\n${previousDraft}\n\nPlease refine it with this instruction: ${instruction}` }],
+        const baselineDraft = lastAnalyzedDraftRef.current?.trim();
+        const useEditedContext = Boolean(options?.useEditedContext);
+
+        const refinePrompt = useEditedContext && baselineDraft && baselineDraft !== previousDraft
+          ? `Baseline draft before user edits:\n\n${baselineDraft}\n\nCurrent edited draft (SOURCE OF TRUTH):\n\n${previousDraft}\n\nRefine instruction: ${instruction}\n\nRefine rules:\n- Treat CURRENT edited draft as authoritative content.\n- Detect what the user changed vs baseline and preserve those edits.\n- Rephrase for clarity/flow while keeping the user's updated meaning and intent.\n- Do not revert user edits back to baseline wording.\n- Do not add new asks/questions/actions unless already present.\n- Return only the final refined email body.`
+          : `Here is the current email draft:\n\n${previousDraft}\n\nRefine instruction: ${instruction}\n\nRefine rules:\n- Preserve intent, key points, and recipient context.\n- Rephrase for clarity/flow; do not add new asks/questions/actions unless already present.\n- Return only the final refined email body.`;
+
+        const refinePass = await streamResponse(
+          [{ role: "user", content: refinePrompt }],
           "refine",
           (full) => setDraft(full)
         );
+
+        const finalRefinedText = normalizeDraftEnding(refinePass.fullText || previousDraft);
+        if (finalRefinedText !== refinePass.fullText) {
+          setDraft(finalRefinedText);
+        }
+        lastAnalyzedDraftRef.current = finalRefinedText;
+        setDraftEditedSinceAnalysis(false);
         trackEvent("draft_refined");
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to refine.";
@@ -390,7 +408,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
       }
       finally { setIsGenerating(false); }
     },
-    [draft, streamResponse, trackEvent, user]
+    [draft, normalizeDraftEnding, streamResponse, trackEvent, user]
   );
 
   const handleCustomRefinement = () => {
@@ -934,7 +952,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         disabled={isGenerating || !draft.trim()}
                         onClick={() => {
                           setDraftEditedSinceAnalysis(false);
-                          refineDraft("Polish this edited draft while preserving my exact points, tone, and intent. Improve clarity, grammar, and flow. Do not add new asks, questions, or actions.");
+                          refineDraft("Polish this edited draft while preserving my exact points, tone, and intent. Improve clarity, grammar, and flow. Do not add new asks, questions, or actions.", { useEditedContext: true });
                         }}
                         className="h-9 px-4 text-xs rounded-xl border-primary/30 hover:bg-primary hover:text-primary-foreground transition-all font-semibold"
                       >
