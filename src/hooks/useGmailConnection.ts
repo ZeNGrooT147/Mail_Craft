@@ -13,6 +13,7 @@ export const useGmailConnection = () => {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const isExpired = !!connection?.expires_at && Date.parse(connection.expires_at) <= Date.now();
 
   const refetchConnection = useCallback(async () => {
     if (!user) {
@@ -90,6 +91,7 @@ export const useGmailConnection = () => {
   return {
     connection,
     isConnected: !!connection,
+    isExpired,
     email: connection?.google_email ?? null,
     expiresAt: connection?.expires_at ?? null,
     loading,

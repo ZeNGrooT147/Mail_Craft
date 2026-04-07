@@ -80,7 +80,7 @@ const getTimeGreeting = () => {
 const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: EmailComposerProps) => {
   const { user } = useAuth();
   const { trackEvent } = useEmailEvents();
-  const { isConnected: gmailConnected, loading: gmailLoading, connecting: gmailConnecting, startOAuth } = useGmailConnection();
+  const { isConnected: gmailConnected, isExpired: gmailExpired, loading: gmailLoading, connecting: gmailConnecting, startOAuth } = useGmailConnection();
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
@@ -354,7 +354,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
       return;
     }
 
-    if (!gmailConnected) {
+    if (!gmailConnected || gmailExpired) {
       toast.error("Connect Gmail here first.");
       return;
     }
@@ -426,7 +426,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
 
   const handleGmailAction = async () => {
     if (gmailLoading || gmailConnecting) return;
-    if (!gmailConnected) {
+    if (!gmailConnected || gmailExpired) {
       const currentRoute = `${window.location.pathname}${window.location.search}${window.location.hash}` || "/";
       await startOAuth(currentRoute);
       return;
@@ -742,11 +742,11 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         size="sm"
                         onClick={() => checkAndSend(() => { void handleGmailAction(); })}
                         disabled={isSendingGmail || gmailLoading || gmailConnecting}
-                        className={`inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg transition-all duration-200 font-medium shrink-0 ${gmailConnected ? "border-emerald-500/35 bg-emerald-500/8 hover:bg-emerald-500/12 hover:border-emerald-500/55 text-foreground" : "border-red-500/35 bg-red-500/8 hover:bg-red-500/12 hover:border-red-500/55 text-foreground"}`}
+                        className={`inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg transition-all duration-200 font-medium shrink-0 ${gmailConnected && !gmailExpired ? "border-emerald-500/35 bg-emerald-500/8 hover:bg-emerald-500/12 hover:border-emerald-500/55 text-foreground" : "border-red-500/35 bg-red-500/8 hover:bg-red-500/12 hover:border-red-500/55 text-foreground"}`}
                       >
                           {isSendingGmail || gmailConnecting ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : gmailConnected ? (
+                          ) : gmailConnected && !gmailExpired ? (
                             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" />
                           ) : (
                             <span className="flex items-center gap-1">
@@ -755,7 +755,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                             </span>
                           )}
                         <span className="hidden sm:inline">
-                          {!gmailConnected
+                          {!gmailConnected || gmailExpired
                             ? (gmailConnecting ? "Linking Gmail..." : "Connect Gmail")
                             : isSendingGmail
                               ? "Dispatching..."
@@ -764,7 +764,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-[10px]">
-                      {!gmailConnected ? "Connect Gmail to turn this red button green" : isSendingGmail ? "Your email is on the move" : "Green-lit to send directly"}
+                      {!gmailConnected || gmailExpired ? "Connect Gmail to turn this red button green" : isSendingGmail ? "Your email is on the move" : "Green-lit to send directly"}
                     </TooltipContent>
                   </Tooltip>
                   <Button variant="ghost" size="sm" onClick={clearAll} className="h-8 sm:h-9 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
@@ -777,8 +777,10 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                 <p className="text-xs text-muted-foreground">
                   {gmailLoading
                     ? "Checking Gmail link..."
-                    : gmailConnected
+                    : gmailConnected && !gmailExpired
                       ? "Gmail is connected and ready to send."
+                      : gmailConnected && gmailExpired
+                        ? "Gmail connection expired. Reconnect to keep sending."
                       : "Gmail is waiting. Connect it here in one tap."}
                 </p>
               </div>
