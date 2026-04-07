@@ -24,17 +24,113 @@ const looksCutOff = (text: string) => {
   return t.length > 40 && danglingWords.has(last);
 };
 
+const MASTER_SYSTEM_PROMPT = `You are a high-end professional email writing assistant used in a premium productivity application.
+
+Your output must feel like it was written by an experienced human professional, not a template.
+
+STYLE REQUIREMENTS:
+- Natural human phrasing with sentence-length variation.
+- Avoid generic cliches like "Hope you're doing well" or "I am writing to inform".
+- Prefer clear, confident, direct language over passive wording.
+- Keep smooth flow across sentences with natural connectors.
+- Avoid robotic, repetitive, or interchangeable phrasing.
+
+REALISM RULES:
+- Every sentence must have intent; no filler.
+- Keep wording context-aware and deliberate.
+- Allow subtle warmth, never exaggerated friendliness.
+
+STRICT CONSTRAINTS:
+- Do not invent facts, names, or details.
+- Do not introduce new requests unless explicitly present in user input.
+- Do not ask clarifying questions unless explicitly requested.
+- Use placeholders like [Name], [Company], [Date], [Your Name] when needed.
+
+OUTPUT RULE:
+- Output only final email text (no markdown, no labels, no explanations).
+`;
+
+const WRITING_MODES = new Set(["draft", "refine", "reply", "subject-lines", "ab-draft"]);
+
+type FewShotTurn = { role: "user" | "model"; text: string };
+
+const FEW_SHOT_EXAMPLES: Record<string, FewShotTurn[]> = {
+  draft: [
+    {
+      role: "user",
+      text: "Context: project timeline update; backend integration complete; minor edge cases under review; release on track. Tone: professional.",
+    },
+    {
+      role: "model",
+      text: "Hi [Name],\n\nFollowing up on our discussion, I consolidated the latest project timeline updates.\n\nBackend integration is complete, and initial API-layer testing is underway. A few minor edge cases are still being reviewed, but none impact the overall delivery timeline.\n\nWe remain on track for the planned release window.\n\nBest regards,\n[Your Name]",
+    },
+    {
+      role: "user",
+      text: "Bad style example to avoid: 'Hope you are doing well. I am writing to inform you... Please let me know your thoughts.'",
+    },
+    {
+      role: "model",
+      text: "Acknowledged. I will avoid generic openings, filler, and vague asks.",
+    },
+  ],
+  refine: [
+    {
+      role: "user",
+      text: "Refine this draft while preserving intent: 'Hi, I am writing to inform you that we completed the work and it is going well. Please let me know your thoughts.'",
+    },
+    {
+      role: "model",
+      text: "Hi [Name],\n\nThe work has been completed and is progressing as expected.\n\nBest regards,\n[Your Name]",
+    },
+  ],
+  reply: [
+    {
+      role: "user",
+      text: "Reply context: proposal mostly aligned; phase-two resource allocation should be reduced; proceed after that adjustment. Tone: professional.",
+    },
+    {
+      role: "model",
+      text: "Hi [Name],\n\nI reviewed the proposal and aligned it against our current priorities. The overall approach is sound, especially the phased rollout.\n\nOne adjustment is required in phase two: resource allocation should be reduced to keep scope aligned. With that update, we can proceed.\n\nRegards,\n[Your Name]",
+    },
+  ],
+};
+
+const getSystemPromptForMode = (mode: string) => {
+  const taskPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.draft;
+  if (!WRITING_MODES.has(mode)) return taskPrompt;
+  return `${MASTER_SYSTEM_PROMPT}\n${taskPrompt}`;
+};
+
+const buildGeminiContents = (
+  mode: string,
+  messages: { role: string; content: string }[]
+) => {
+  const fewShot = (FEW_SHOT_EXAMPLES[mode] || []).map((turn) => ({
+    role: turn.role,
+    parts: [{ text: turn.text }],
+  }));
+
+  const chatTurns = messages
+    .filter((message) => typeof message?.content === "string" && message.content.trim().length > 0)
+    .map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: message.content }],
+    }));
+
+  return [...fewShot, ...chatTurns];
+};
+
 const SYSTEM_PROMPTS: Record<string, string> = {
   draft:
-    "You are a senior executive communications writer. Produce polished, human-sounding emails that are specific, persuasive, and easy to act on.\n\nQuality rules:\n1) Write naturally, not robotic or generic.\n2) Treat user-provided context/key points as the primary source of truth and base the draft on them.\n3) If context/key points are provided, incorporate all important points explicitly in the final email.\n4) If details are missing, placeholders are allowed (for example: [Name], [Company], [Date], [Your Name]).\n5) Keep a clear structure: greeting, purpose, key details, clear next step, sign-off.\n6) Match the requested tone and keep professional clarity.\n7) Do not invent facts not present in the prompt.\n8) Never invent specific recipient names, company names, or personal details when not provided; use placeholders instead.\n9) Prefer complete, substantial emails by default (multi-paragraph), unless the user explicitly asks for a short version.\n10) Never end abruptly; always finish with a complete closing and sign-off.\n11) Do not ask clarifying questions in the email body. Act using the provided information and placeholders when needed.\n12) Avoid interrogative sentences and question marks unless the user explicitly requests a question-style email.\n13) Do not ask the recipient to provide missing information; instead provide a concrete next-step statement with a proposed timeline (use placeholders when needed), e.g., 'I will send the kickoff invite for [Date].'\n\nOutput only the final email body text. No markdown, no analysis, no subject line.",
+    "Write a complete professional email using only the provided context/key points as the base content.\n\nREQUIREMENTS:\n- Opening: establish purpose quickly in 1-2 lines.\n- Body: group related points logically in natural paragraphs.\n- Tone: match requested tone while sounding human.\n- Closing: calm, professional wrap-up with complete sign-off.\n\nRULES:\n- Include all important provided key points clearly.\n- Rephrase intelligently; do not copy awkwardly.\n- Do not add new asks/questions/actions not present in input.\n- Do not ask clarifying questions unless explicitly requested.",
   refine:
-    "You are a senior email editor. Improve the user's draft for clarity, flow, and persuasiveness while preserving intent, facts, voice, and any provided context/key points. Tighten weak sentences, remove fluff, improve transitions, and ensure a clear call-to-action. Never add placeholders. Do not insert clarifying questions unless the user explicitly requested a question-style email. Output only the refined email body.",
+    "Improve the email for clarity, flow, and professionalism while preserving intent exactly.\n\nFOCUS:\n- Remove robotic wording and weak transitions.\n- Preserve personality and natural rhythm.\n- Rephrase and polish only; do not add new asks/tasks/questions/actions unless they already exist in input.\n- Do not insert clarifying questions unless explicitly requested.",
   "subject-lines":
-    "You are an expert at writing email subject lines. Given an email body or context, generate exactly 5 compelling subject line options. Output them as a numbered list (1. ... 2. ... etc). Each should be concise (under 60 chars), attention-grabbing, and relevant.",
+    "Generate exactly 5 subject lines.\nRules: under 60 characters, distinct style per option, tightly aligned with content, avoid generic business cliches.\nOutput as a numbered list only.",
   "grammar-check":
     "You are a professional writing coach and editor. Analyze the provided email comprehensively for: **Grammar & Spelling** (errors, typos), **Clarity & Structure** (sentence restructuring, jargon simplification), **Tone & Professionalism** (politeness enhancement, consistent tone), **Voice** (passive to active voice suggestions), **Readability** (complex word alternatives). Provide specific suggestions with before/after examples. Be constructive and actionable.",
   reply:
-    "You are a senior communications specialist writing high-quality professional replies. Craft a thoughtful response that addresses the sender's points directly, confirms decisions or next steps clearly, and sounds confident but courteous. Treat provided reply context/key points as required input and include those points in the response. If details are missing, placeholders are allowed (for example: [Name], [Company], [Date], [Your Name]). Never invent recipient names or personal details; use only explicit input or placeholders. Prefer complete, substantial replies unless user explicitly asks for short. Never end abruptly; always finish with a complete closing and sign-off. Do not ask clarifying questions in the reply unless user explicitly asks for that style. Avoid question marks and avoid information-seeking requests; use direct next-step statements with placeholders when needed. Output only the reply email body with greeting and sign-off.",
+    "Write a thoughtful human reply using the provided context/key points as required input.\n\nRULES:\n- Address the sender's points clearly.\n- Rephrase and structure provided information; do not add new asks/questions/actions unless explicitly present in input.\n- Sound like a deliberate human response, not a template.\n- Use placeholders if details are missing.\n- Finish with a complete professional closing.",
   "tone-analysis":
     "You are a tone analysis expert. Analyze the provided email text and output exactly 4 numbers (0-100) on the first 4 lines, then a short label on the 5th line:\nLine 1: Formality score (0=very casual, 100=very formal)\nLine 2: Friendliness score (0=cold/distant, 100=very warm)\nLine 3: Confidence score (0=tentative/uncertain, 100=very assertive)\nLine 4: Urgency score (0=relaxed, 100=very urgent)\nLine 5: A 2-3 word overall tone label (e.g. 'Professional & Warm', 'Casual & Friendly')\n\nScoring rules:\n- Use the full range when justified; do not default to 50.\n- Urgency should increase strongly for deadlines, immediate asks, escalation words, or time pressure.\n- Confidence should increase for direct commitments and decisive statements.\n- Formality should increase for business wording and structured etiquette.\n- Friendliness should increase for warm appreciation and supportive language.\n\nOutput ONLY these 5 lines, nothing else.",
   summarize:
@@ -98,7 +194,7 @@ serve(async (req) => {
       throw new Error("GEMINI_API_KEY is not configured");
     }
 
-    const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.draft;
+    const systemPrompt = getSystemPromptForMode(mode);
     const primaryModel = "gemini-2.5-flash";
     const defaultFallbackModels = [
       "gemini-2.5-pro",
@@ -220,12 +316,7 @@ serve(async (req) => {
       });
     }
 
-    const geminiContents = messages
-      .filter((message) => typeof message?.content === "string" && message.content.trim().length > 0)
-      .map((message) => ({
-        role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }],
-      }));
+    const geminiContents = buildGeminiContents(mode, messages);
 
     const retryableStatuses = new Set([402, 404, 408, 409, 429, 500, 502, 503, 504]);
     let response: Response | null = null;
