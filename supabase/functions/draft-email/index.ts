@@ -8,19 +8,35 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const looksCutOff = (text: string) => {
+  const t = text.trim();
+  if (!t) return false;
+  if (/(^|\n)\s*(best|thanks|regards|sincerely|warm regards)\s*,?\s*$/i.test(t)) return true;
+  if (/[.!?]$/.test(t)) return false;
+  if (t.length > 80) return true;
+  const tokens = t.toLowerCase().split(/\s+/);
+  const last = (tokens[tokens.length - 1] || "").replace(/[.,;:!?]+$/g, "");
+  const danglingWords = new Set([
+    "the", "a", "an", "to", "for", "with", "and", "or", "of", "in", "on", "at", "as", "by", "from",
+    "that", "this", "it", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+    "will", "would", "can", "could", "should", "please", "attached",
+  ]);
+  return t.length > 40 && danglingWords.has(last);
+};
+
 const SYSTEM_PROMPTS: Record<string, string> = {
   draft:
-    "You are an expert email writer. Write clear, well-structured emails based on the user's instructions. Output only the email body text — no subject line, no markdown headers. Use appropriate greetings and sign-offs. Keep it concise and natural.",
+    "You are a senior executive communications writer. Produce polished, human-sounding emails that are specific, persuasive, and easy to act on.\n\nQuality rules:\n1) Write naturally, not robotic or generic.\n2) Use concrete details from user context whenever available.\n3) If details are missing, placeholders are allowed (for example: [Name], [Company], [Date], [Your Name]).\n4) Keep a clear structure: greeting, purpose, key details, clear next step, sign-off.\n5) Match the requested tone and keep professional clarity.\n6) Do not invent facts not present in the prompt.\n7) Never invent specific recipient names, company names, or personal details when not provided; use placeholders instead.\n8) Prefer complete, substantial emails by default (multi-paragraph), unless the user explicitly asks for a short version.\n9) Never end abruptly; always finish with a complete closing and sign-off.\n\nOutput only the final email body text. No markdown, no analysis, no subject line.",
   refine:
-    "You are an expert email editor. The user will provide an existing email draft and instructions for how to refine it. Apply the requested changes while preserving the overall structure and intent. Output only the refined email body.",
+    "You are a senior email editor. Improve the user's draft for clarity, flow, and persuasiveness while preserving intent, facts, and voice. Tighten weak sentences, remove fluff, improve transitions, and ensure a clear call-to-action. Never add placeholders. Output only the refined email body.",
   "subject-lines":
     "You are an expert at writing email subject lines. Given an email body or context, generate exactly 5 compelling subject line options. Output them as a numbered list (1. ... 2. ... etc). Each should be concise (under 60 chars), attention-grabbing, and relevant.",
   "grammar-check":
     "You are a professional writing coach and editor. Analyze the provided email comprehensively for: **Grammar & Spelling** (errors, typos), **Clarity & Structure** (sentence restructuring, jargon simplification), **Tone & Professionalism** (politeness enhancement, consistent tone), **Voice** (passive to active voice suggestions), **Readability** (complex word alternatives). Provide specific suggestions with before/after examples. Be constructive and actionable.",
   reply:
-    "You are an expert email writer. The user will share an email they received and optionally some context about how they want to reply. Write a thoughtful, well-structured reply. Output only the reply email body with appropriate greeting and sign-off.",
+    "You are a senior communications specialist writing high-quality professional replies. Craft a thoughtful response that addresses the sender's points directly, confirms decisions or next steps clearly, and sounds confident but courteous. If details are missing, placeholders are allowed (for example: [Name], [Company], [Date], [Your Name]). Never invent recipient names or personal details; use only explicit input or placeholders. Prefer complete, substantial replies unless user explicitly asks for short. Never end abruptly; always finish with a complete closing and sign-off. Output only the reply email body with greeting and sign-off.",
   "tone-analysis":
-    "You are a tone analysis expert. Analyze the provided email text and output exactly 4 numbers (0-100) on the first 4 lines, then a short label on the 5th line:\nLine 1: Formality score (0=very casual, 100=very formal)\nLine 2: Friendliness score (0=cold/distant, 100=very warm)\nLine 3: Confidence score (0=tentative/uncertain, 100=very assertive)\nLine 4: Urgency score (0=relaxed, 100=very urgent)\nLine 5: A 2-3 word overall tone label (e.g. 'Professional & Warm', 'Casual & Friendly')\nOutput ONLY these 5 lines, nothing else.",
+    "You are a tone analysis expert. Analyze the provided email text and output exactly 4 numbers (0-100) on the first 4 lines, then a short label on the 5th line:\nLine 1: Formality score (0=very casual, 100=very formal)\nLine 2: Friendliness score (0=cold/distant, 100=very warm)\nLine 3: Confidence score (0=tentative/uncertain, 100=very assertive)\nLine 4: Urgency score (0=relaxed, 100=very urgent)\nLine 5: A 2-3 word overall tone label (e.g. 'Professional & Warm', 'Casual & Friendly')\n\nScoring rules:\n- Use the full range when justified; do not default to 50.\n- Urgency should increase strongly for deadlines, immediate asks, escalation words, or time pressure.\n- Confidence should increase for direct commitments and decisive statements.\n- Formality should increase for business wording and structured etiquette.\n- Friendliness should increase for warm appreciation and supportive language.\n\nOutput ONLY these 5 lines, nothing else.",
   summarize:
     "You are an expert email summarizer. Read the provided email and produce a concise TL;DR summary in 2-3 sentences. Focus on the key message, any requests, and the overall intent. Output only the summary, no headers.",
   "extract-actions":
@@ -85,9 +101,9 @@ serve(async (req) => {
     const systemPrompt = SYSTEM_PROMPTS[mode] || SYSTEM_PROMPTS.draft;
     const primaryModel = "gemini-2.5-flash";
     const defaultFallbackModels = [
+      "gemini-2.5-pro",
       "gemini-2.0-flash",
       "gemini-flash-latest",
-      "gemini-2.5-pro",
       "gemini-3-pro-preview",
       "gemini-3.1-pro-preview",
     ];
@@ -101,9 +117,9 @@ serve(async (req) => {
       ...extraFallbackModels,
     ].filter((model, index, all) => all.indexOf(model) === index);
     const maxOutputTokensByMode: Record<string, number> = {
-      draft: 1400,
-      reply: 1400,
-      refine: 1400,
+      draft: 2400,
+      reply: 2400,
+      refine: 2400,
       "subject-lines": 180,
       summarize: 220,
       "quick-replies": 180,
@@ -119,6 +135,90 @@ serve(async (req) => {
       chat: 1200,
     };
     const maxOutputTokens = maxOutputTokensByMode[mode] ?? 520;
+
+    if (mode === "tone-analysis") {
+      const toneText = messages
+        .map((m) => (typeof m?.content === "string" ? m.content : ""))
+        .join("\n\n")
+        .trim();
+
+      if (!toneText) {
+        return new Response(
+          JSON.stringify({ error: "No text provided for tone analysis" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const fastModels = [
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        ...modelCandidates,
+      ].filter((model, index, all) => all.indexOf(model) === index);
+
+      let tonePayload = "";
+      let toneModel = "";
+      let toneStatus = 500;
+      let toneErrorText = "";
+
+      for (const modelName of fastModels) {
+        const toneResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM_PROMPTS["tone-analysis"] }] },
+              contents: [{ role: "user", parts: [{ text: toneText }] }],
+              generationConfig: {
+                temperature: 0.15,
+                topP: 0.8,
+                maxOutputTokens: 90,
+              },
+            }),
+          }
+        );
+
+        if (toneResp.ok) {
+          const toneJson = await toneResp.json();
+          tonePayload = (toneJson?.candidates?.[0]?.content?.parts ?? [])
+            .map((part: { text?: string }) => part?.text ?? "")
+            .join("")
+            .trim();
+          toneModel = modelName;
+          break;
+        }
+
+        toneStatus = toneResp.status;
+        toneErrorText = await toneResp.text();
+      }
+
+      if (!tonePayload) {
+        return new Response(
+          JSON.stringify({ error: "Tone analysis failed", detail: toneErrorText || "No response" }),
+          { status: toneStatus || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: tonePayload } }] })}\n\n`;
+          controller.enqueue(encoder.encode(payload));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-AI-Model": toneModel || "tone-fast-path",
+        },
+      });
+    }
 
     const geminiContents = messages
       .filter((message) => typeof message?.content === "string" && message.content.trim().length > 0)
@@ -147,7 +247,7 @@ serve(async (req) => {
             },
             contents: geminiContents,
             generationConfig: {
-              temperature: 0.5,
+              temperature: 0.65,
               topP: 0.9,
               maxOutputTokens,
             },
@@ -206,6 +306,41 @@ serve(async (req) => {
         let buffer = "";
         let emittedText = "";
 
+        const emitFromRawLine = (rawLine: string) => {
+          const line = rawLine.trim();
+          if (!line.startsWith("data:")) return;
+
+          const dataText = line.slice(5).trim();
+          if (!dataText) return;
+          if (dataText === "[DONE]") return;
+
+          let parsed: any;
+          try {
+            parsed = JSON.parse(dataText);
+          } catch {
+            return;
+          }
+
+          const chunkText = (parsed?.candidates?.[0]?.content?.parts ?? [])
+            .map((part: { text?: string }) => part?.text ?? "")
+            .join("");
+
+          if (!chunkText) return;
+
+          let delta = chunkText;
+          if (chunkText.startsWith(emittedText)) {
+            delta = chunkText.slice(emittedText.length);
+            emittedText = chunkText;
+          } else {
+            emittedText += chunkText;
+          }
+
+          if (!delta) return;
+
+          const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: delta } }] })}\n\n`;
+          controller.enqueue(encoder.encode(payload));
+        };
+
         try {
           while (true) {
             const { done, value } = await geminiReader.read();
@@ -216,38 +351,15 @@ serve(async (req) => {
             buffer = lines.pop() ?? "";
 
             for (const rawLine of lines) {
-              const line = rawLine.trim();
-              if (!line.startsWith("data:")) continue;
-
-              const dataText = line.slice(5).trim();
-              if (!dataText || dataText === "[DONE]") continue;
-
-              let parsed: any;
-              try {
-                parsed = JSON.parse(dataText);
-              } catch {
-                continue;
-              }
-
-              const chunkText = (parsed?.candidates?.[0]?.content?.parts ?? [])
-                .map((part: { text?: string }) => part?.text ?? "")
-                .join("");
-
-              if (!chunkText) continue;
-
-              let delta = chunkText;
-              if (chunkText.startsWith(emittedText)) {
-                delta = chunkText.slice(emittedText.length);
-                emittedText = chunkText;
-              } else {
-                emittedText += chunkText;
-              }
-
-              if (!delta) continue;
-
-              const payload = `data: ${JSON.stringify({ choices: [{ delta: { content: delta } }] })}\n\n`;
-              controller.enqueue(encoder.encode(payload));
+              emitFromRawLine(rawLine);
             }
+          }
+
+          if (buffer.trim().length > 0) {
+            buffer
+              .split("\n")
+              .filter((line) => line.trim().length > 0)
+              .forEach((line) => emitFromRawLine(line));
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));

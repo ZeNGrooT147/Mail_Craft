@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Button } from "@/components/ui/button";
 import { GitCompare, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -24,8 +25,7 @@ const DraftComparison = ({ currentDraft, onPickDraft }: DraftComparisonProps) =>
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           mode: "ab-draft",
@@ -110,3 +110,6 @@ const DraftComparison = ({ currentDraft, onPickDraft }: DraftComparisonProps) =>
 };
 
 export default DraftComparison;
+
+
+

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Button } from "@/components/ui/button";
 import { Target, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,10 +23,9 @@ const ColdEmailOptimizer = ({ emailBody }: ColdEmailOptimizerProps) => {
     try {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+        headers: {
+          "Content-Type": "application/json",
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({ mode: "cold-optimize", messages: [{ role: "user", content: `Analyze this cold email:\n\n${emailBody}` }] }),
       });
@@ -76,3 +76,6 @@ const ColdEmailOptimizer = ({ emailBody }: ColdEmailOptimizerProps) => {
 };
 
 export default ColdEmailOptimizer;
+
+
+

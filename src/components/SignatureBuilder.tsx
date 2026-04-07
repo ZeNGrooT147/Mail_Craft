@@ -10,6 +10,17 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+const deriveNameFromEmail = (email: string | undefined | null) => {
+  if (!email) return "";
+  const localPart = email.split("@")[0] || "";
+  return localPart
+    .replace(/[._-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 interface Signature {
   id: string;
   name: string;
@@ -52,7 +63,7 @@ const SignatureBuilder = ({ onSignatureChange }: SignatureBuilderProps) => {
       .order("created_at", { ascending: true });
     if (data) {
       setSignatures(data as Signature[]);
-      const defaultSig = data.find((s: any) => s.is_default);
+      const defaultSig = data.find((s: any) => s.is_default) ?? data[0];
       onSignatureChange?.(defaultSig ? formatSignature(defaultSig as Signature) : null);
     }
   }, [user, onSignatureChange, formatSignature]);
@@ -63,7 +74,7 @@ const SignatureBuilder = ({ onSignatureChange }: SignatureBuilderProps) => {
     setEditing({
       id: "",
       name: "My Signature",
-      full_name: profile?.display_name || "",
+      full_name: profile?.display_name || deriveNameFromEmail(user?.email) || "",
       job_title: "",
       company: "",
       phone: "",

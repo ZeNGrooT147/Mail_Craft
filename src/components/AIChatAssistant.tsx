@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Send, X, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,7 @@ const AIChatAssistant = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({ messages: allMessages, mode: "chat" }),
       });
@@ -224,3 +224,6 @@ const AIChatAssistant = () => {
 };
 
 export default AIChatAssistant;
+
+
+

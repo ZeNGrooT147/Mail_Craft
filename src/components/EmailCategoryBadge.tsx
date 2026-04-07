@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Info, CheckCircle2, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,11 +38,10 @@ const EmailCategoryBadge = ({ emailText }: EmailCategoryBadgeProps) => {
       try {
         const resp = await fetch(CHAT_URL, {
           method: "POST",
-          headers: { 
-            "Content-Type": "application/json", 
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-          },
+          headers: {
+          "Content-Type": "application/json",
+          ...(await getAiHeaders()),
+        },
           body: JSON.stringify({ mode: "categorize", messages: [{ role: "user", content: emailText }] }),
         });
         if (!resp.ok || !resp.body) return;
@@ -98,3 +98,6 @@ const EmailCategoryBadge = ({ emailText }: EmailCategoryBadgeProps) => {
 };
 
 export default EmailCategoryBadge;
+
+
+

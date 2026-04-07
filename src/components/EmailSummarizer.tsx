@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FileText, ListChecks, Loader2, ChevronDown, ChevronUp } from "lucide-react";
@@ -24,8 +25,7 @@ const EmailSummarizer = ({ emailText }: EmailSummarizerProps) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: emailText }],
@@ -112,3 +112,6 @@ const EmailSummarizer = ({ emailText }: EmailSummarizerProps) => {
 };
 
 export default EmailSummarizer;
+
+
+

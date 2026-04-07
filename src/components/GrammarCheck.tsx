@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Loader2, CheckCircle2, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,8 +48,7 @@ const GrammarCheck = ({ emailBody, triggerKey }: GrammarCheckProps) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           mode: "grammar-check",
@@ -132,3 +132,6 @@ const GrammarCheck = ({ emailBody, triggerKey }: GrammarCheckProps) => {
 };
 
 export default GrammarCheck;
+
+
+

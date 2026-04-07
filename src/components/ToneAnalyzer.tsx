@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
   const [score, setScore] = useState<ToneScore | null>(null);
   const [loading, setLoading] = useState(false);
   const lastTrigger = useRef<number | undefined>(undefined);
+  const lastAnalyzedText = useRef("");
 
   const analyze = useCallback(async () => {
     if (!text.trim()) return;
@@ -44,8 +46,7 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: text }],
@@ -82,13 +83,34 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
         }
       }
 
-      const nums = fullText.match(/\d+/g)?.map(Number) || [];
+      const lines = fullText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      const parseScore = (line?: string, fallback = 50) => {
+        if (!line) return fallback;
+        const n = Number((line.match(/\d+/)?.[0] ?? ""));
+        if (!Number.isFinite(n)) return fallback;
+        return Math.min(100, Math.max(0, n));
+      };
+
+      const formality = parseScore(lines[0], 50);
+      const friendliness = parseScore(lines[1], 50);
+      const confidence = parseScore(lines[2], 50);
+      const urgency = parseScore(lines[3], 30);
+      const labelCandidate = (lines[4] || "").replace(/[^a-zA-Z\s&,-]/g, "").trim();
+      const labelFromScores =
+        formality >= 70
+          ? (friendliness >= 60 ? "Professional & Warm" : "Formal & Direct")
+          : (friendliness >= 65 ? "Casual & Friendly" : "Neutral");
+
       setScore({
-        formality: Math.min(100, Math.max(0, nums[0] ?? 50)),
-        friendliness: Math.min(100, Math.max(0, nums[1] ?? 50)),
-        confidence: Math.min(100, Math.max(0, nums[2] ?? 50)),
-        urgency: Math.min(100, Math.max(0, nums[3] ?? 30)),
-        label: fullText.split("\n").pop()?.replace(/[^a-zA-Z\s,]/g, "").trim() || "Neutral",
+        formality,
+        friendliness,
+        confidence,
+        urgency,
+        label: labelCandidate || labelFromScores,
       });
     } catch {
       toast.error("Analysis failed.");
@@ -104,6 +126,27 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
       analyze();
     }
   }, [triggerKey, analyze, text]);
+
+  // Auto-run on draft text changes so tone does not stay stale between generations.
+  useEffect(() => {
+    const normalized = text.trim();
+    if (!normalized) {
+      setScore(null);
+      lastAnalyzedText.current = "";
+      return;
+    }
+
+    if (normalized === lastAnalyzedText.current) return;
+
+    const timer = window.setTimeout(() => {
+      if (normalized !== lastAnalyzedText.current) {
+        lastAnalyzedText.current = normalized;
+        analyze();
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [text, analyze]);
 
   if (loading) {
     return (
@@ -145,3 +188,6 @@ const ToneAnalyzer = ({ text, triggerKey }: ToneAnalyzerProps) => {
 };
 
 export default ToneAnalyzer;
+
+
+

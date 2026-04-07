@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Button } from "@/components/ui/button";
 import { Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -23,8 +24,7 @@ const QuickReplySuggestions = ({ emailText, onSelectReply }: QuickReplySuggestio
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: emailText }],
@@ -104,3 +104,6 @@ const QuickReplySuggestions = ({ emailText, onSelectReply }: QuickReplySuggestio
 };
 
 export default QuickReplySuggestions;
+
+
+

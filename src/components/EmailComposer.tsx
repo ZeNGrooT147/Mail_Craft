@@ -28,6 +28,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEmailEvents } from "@/hooks/useEmailEvents";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { supabase } from "@/integrations/supabase/client";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   Sparkles, Copy, Trash2, Loader2, Mail, ArrowRight,
@@ -77,6 +78,18 @@ const getTimeGreeting = () => {
   return "Good evening";
 };
 
+const TONE_STYLE_GUIDE: Record<Tone, string> = {
+  Professional: "clear, respectful, businesslike wording with concise sentences",
+  Casual: "relaxed and conversational wording while staying polite",
+  Friendly: "warm, positive, approachable language",
+  Formal: "structured, polished, and highly professional wording",
+  Persuasive: "confident, benefit-focused language with a strong call-to-action",
+  Empathetic: "understanding, supportive wording that acknowledges feelings",
+  Apologetic: "sincere accountability with corrective next steps",
+  Confident: "assertive and direct wording with decisive statements",
+  Urgent: "time-sensitive language with clear immediate actions",
+};
+
 const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: EmailComposerProps) => {
   const { user } = useAuth();
   const { trackEvent } = useEmailEvents();
@@ -109,6 +122,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   const refineSectionRef = useRef<HTMLDivElement | null>(null);
   const toolsSectionRef = useRef<HTMLDivElement | null>(null);
   const cacheHydratedRef = useRef(false);
+  const lastGeneratedToneRef = useRef<Tone | null>(null);
   const composerCacheKey = getComposerCacheKey(user?.id);
 
   useEffect(() => {
@@ -200,48 +214,140 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   const langLabel = languages.find((l) => l.code === language)?.label || "English";
 
   const streamResponse = useCallback(
-    async (messages: { role: string; content: string }[], aiMode: string, onChunk: (full: string) => void) => {
+    async (
+      messages: { role: string; content: string }[],
+      aiMode: string,
+      onChunk: (full: string) => void
+    ): Promise<{ fullText: string; completed: boolean }> => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...(await getAiHeaders()),
+      }
       const resp = await fetch(CHAT_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-        },
+        headers,
         body: JSON.stringify({ messages, mode: aiMode }),
       });
-      if (resp.status === 429) { toast.error("Rate limit exceeded."); return; }
-      if (resp.status === 402) { toast.error("AI credits exhausted."); return; }
-      if (!resp.ok || !resp.body) { toast.error("Failed to generate."); return; }
+      if (resp.status === 401) {
+        toast.error("Please sign in to use AI drafting.");
+        throw new Error("Unauthorized");
+      }
+      if (resp.status === 429) {
+        toast.error("Rate limit exceeded.");
+        throw new Error("Rate limited");
+      }
+      if (resp.status === 402) {
+        toast.error("AI credits exhausted.");
+        throw new Error("Credits exhausted");
+      }
+      if (!resp.ok || !resp.body) {
+        const detail = await resp.text().catch(() => "");
+        toast.error(detail ? `Failed to generate: ${detail}` : "Failed to generate.");
+        throw new Error(detail || "Failed to generate");
+      }
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = "";
       let fullText = "";
+      let sawDone = false;
+
+      const processSseLine = (rawLine: string) => {
+        let line = rawLine;
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        if (line.startsWith(":") || line.trim() === "") return false;
+        if (!line.startsWith("data: ")) return false;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") {
+          sawDone = true;
+          return true;
+        }
+
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) {
+          fullText += content;
+          onChunk(fullText);
+        }
+        return false;
+      };
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          if (textBuffer.trim().length > 0) {
+            const remainingLines = textBuffer.split("\n");
+            for (const remainingLine of remainingLines) {
+              if (!remainingLine.trim()) continue;
+              try {
+                processSseLine(remainingLine);
+              } catch {
+                // Ignore trailing malformed/non-JSON bytes.
+              }
+            }
+          }
+          break;
+        }
         textBuffer += decoder.decode(value, { stream: true });
         let newlineIndex: number;
         while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
+          const line = textBuffer.slice(0, newlineIndex);
           textBuffer = textBuffer.slice(newlineIndex + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") return;
           try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) { fullText += content; onChunk(fullText); }
-          } catch { textBuffer = line + "\n" + textBuffer; break; }
+            const shouldStop = processSseLine(line);
+            if (shouldStop) {
+              return { fullText, completed: true };
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
         }
       }
+      return { fullText, completed: sawDone };
     },
     []
   );
 
-  const lengthInstruction = length === "Short" ? "\n- Length: Keep it very brief (2-3 sentences max)" : length === "Detailed" ? "\n- Length: Write a detailed, thorough email with full explanations" : "";
+  const looksCutOff = useCallback((text: string) => {
+    const t = text.trim();
+    if (!t) return false;
+    if (/(^|\n)\s*(best|thanks|regards|sincerely|warm regards)\s*,?\s*$/i.test(t)) return true;
+    if (/[.!?]$/.test(t)) return false;
+    if (t.length > 80) return true;
+    const tokens = t.toLowerCase().split(/\s+/);
+    const last = (tokens[tokens.length - 1] || "").replace(/[.,;:!?]+$/g, "");
+    const danglingWords = new Set([
+      "the", "a", "an", "to", "for", "with", "and", "or", "of", "in", "on", "at", "as", "by", "from",
+      "that", "this", "it", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+      "will", "would", "can", "could", "should", "please", "attached",
+    ]);
+    return t.length > 40 && danglingWords.has(last);
+  }, []);
+
+  const normalizeDraftEnding = useCallback((text: string) => {
+    const hasSignature = Boolean(signature && signature.trim().length > 0);
+    if (hasSignature) return text;
+
+    let normalized = text.replace(/\s+$/g, "");
+    normalized = normalized.replace(
+      /(^|\n)\s*(best regards|best|thanks|regards|sincerely|warm regards)\s*,\s*$/i,
+      (_m, prefix, signoff) => `${prefix}${signoff}.`
+    );
+
+    if (!/[.!?]$/.test(normalized) && normalized.length > 40) {
+      normalized += ".";
+    }
+    return normalized;
+  }, [signature]);
+
+  const lengthInstruction =
+    length === "Short"
+      ? "\n- Length: Keep it brief (2-3 sentences max)."
+      : length === "Detailed"
+        ? "\n- Length: Write a detailed, substantial email in multiple paragraphs (8-12 sentences) with full context and a complete closing."
+        : "\n- Length: Write a complete email in multiple paragraphs (4-7 sentences) with a proper closing and sign-off.";
 
   const generateDraft = useCallback(async () => {
     if (mode === "reply" && !incomingEmail.trim()) { toast.error("Paste the email you want to reply to."); return; }
@@ -252,25 +358,62 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
     setDraft("");
     const langInstruction = language !== "en" ? `\n- Language: Write the email in ${langLabel}` : "";
     const greeting = getTimeGreeting();
+    const toneInstruction = `\n- Tone style requirement: ${tone} tone. Use ${TONE_STYLE_GUIDE[tone]}.`;
+    const recipientNameInstruction = to.trim()
+      ? `\n- Recipient handling: Use exactly this recipient name/address if referenced: ${to.trim()}. Do not change or replace it.`
+      : `\n- Recipient handling: If recipient name is unknown, use placeholder [Name] in greeting/sign-off instead of inventing a real name.`;
+    const toneChangeInstruction =
+      existingDraft && lastGeneratedToneRef.current && lastGeneratedToneRef.current !== tone
+        ? `\n- Tone change requested: previous draft tone was ${lastGeneratedToneRef.current}. Rewrite wording to clearly match ${tone}; do not keep prior tone phrasing.`
+        : "";
 
     let userContent: string;
     if (existingDraft) {
-      userContent = `Here is my current edited email draft:\n\n${existingDraft}\n\nPlease regenerate this draft by improving it while preserving my intent and key edits.\n- Mode: ${mode}\n- Recipient: ${to || "Not specified"}\n- Subject: ${subject || "Not specified"}\n- Additional context: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}\n\nReturn only the final email body, ready to send.`;
+      userContent = `Here is my current edited email draft:\n\n${existingDraft}\n\nPlease regenerate this draft by improving it while preserving my intent and key edits.\n- Mode: ${mode}\n- Recipient: ${to || "Not specified"}\n- Subject: ${subject || "Not specified"}\n- Additional context: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}${toneInstruction}${recipientNameInstruction}${toneChangeInstruction}\n- Writing quality: sound human and specific, avoid generic filler, include a clear next step.\n- Completeness: return a fully complete email body and never stop mid-sentence or mid-paragraph.\n\nReturn only the final email body, ready to send.`;
     } else if (mode === "reply") {
-      userContent = `Here is the email I received:\n\n${incomingEmail}\n\nContext for my reply: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}`;
+      userContent = `Here is the email I received:\n\n${incomingEmail}\n\nContext for my reply: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}${toneInstruction}${recipientNameInstruction}\n- Writing quality: directly address key points from the received email and include a concrete next step.\n- Completeness: return a fully complete email body and never stop mid-sentence or mid-paragraph.`;
     } else {
-      userContent = `Draft an email with the following details:\n- Recipient: ${to || "Not specified"}\n- Subject: ${subject || "Not specified"}\n- Context/Key points: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}\n\nWrite only the email body, no subject line. Make it ready to send.`;
+      userContent = `Draft an email with the following details:\n- Recipient: ${to || "Not specified"}\n- Subject: ${subject || "Not specified"}\n- Context/Key points: ${context || "Not specified"}\n- Tone: ${tone}\n- Use a time-appropriate greeting like "${greeting}"${langInstruction}${lengthInstruction}${toneInstruction}${recipientNameInstruction}\n- Writing quality: be specific and practical, avoid vague corporate phrases, and include a clear call-to-action.\n- Completeness: return a fully complete email body and never stop mid-sentence or mid-paragraph.\n\nWrite only the email body, no subject line. Make it ready to send.`;
     }
 
     try {
-      await streamResponse([{ role: "user", content: userContent }], mode === "reply" ? "reply" : "draft", (full) => setDraft(full));
+      const firstPass = await streamResponse(
+        [{ role: "user", content: userContent }],
+        mode === "reply" ? "reply" : "draft",
+        (full) => setDraft(full)
+      );
+
+      let finalDraftText = firstPass.fullText;
+
+      if (firstPass.fullText.trim() && !firstPass.completed) {
+        const completionInstruction = `The following email appears cut off or incomplete. Return a complete final version that preserves the same meaning and tone, with a proper ending and sign-off. Do not add placeholders.\n\nEmail draft:\n${firstPass.fullText}`;
+        const completionPass = await streamResponse(
+          [{ role: "user", content: completionInstruction }],
+          "refine",
+          (full) => setDraft(full)
+        );
+        if (completionPass.fullText.trim()) {
+          finalDraftText = completionPass.fullText;
+        }
+      }
+
+      const normalizedFinalText = normalizeDraftEnding(finalDraftText);
+      if (normalizedFinalText && normalizedFinalText !== finalDraftText) {
+        setDraft(normalizedFinalText);
+      }
+      lastGeneratedToneRef.current = tone;
+
       trackEvent("draft_created");
-      // Auto-trigger all AI analysis tools
-      setAnalysisKey((k) => k + 1);
       setDraftEditedSinceAnalysis(false);
-    } catch (e) { console.error(e); toast.error("Something went wrong."); }
+    } catch (e) {
+      console.error(e);
+      const message = e instanceof Error ? e.message : "Something went wrong.";
+      if (!["Unauthorized", "Rate limited", "Credits exhausted"].includes(message)) {
+        toast.error(message || "Something went wrong.");
+      }
+    }
     finally { setIsGenerating(false); }
-  }, [draft, to, subject, context, tone, language, langLabel, length, lengthInstruction, mode, incomingEmail, streamResponse, trackEvent]);
+  }, [draft, to, subject, context, tone, language, langLabel, length, lengthInstruction, mode, incomingEmail, looksCutOff, normalizeDraftEnding, streamResponse, trackEvent]);
 
   generateDraftRef.current = generateDraft;
   saveDraftRef.current = draft && user ? async () => {
@@ -283,6 +426,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
 
   const refineDraft = useCallback(
     async (instruction: string) => {
+      if (!user) { toast.error("Please sign in to use AI refine."); return; }
       if (!draft.trim()) { toast.error("Generate a draft first."); return; }
       setIsGenerating(true);
       const previousDraft = draft;
@@ -294,10 +438,16 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
           (full) => setDraft(full)
         );
         trackEvent("draft_refined");
-      } catch { toast.error("Failed to refine."); setDraft(previousDraft); }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to refine.";
+        if (!["Unauthorized", "Rate limited", "Credits exhausted"].includes(message)) {
+          toast.error(message || "Failed to refine.");
+        }
+        setDraft(previousDraft);
+      }
       finally { setIsGenerating(false); }
     },
-    [draft, streamResponse, trackEvent]
+    [draft, streamResponse, trackEvent, user]
   );
 
   const handleCustomRefinement = () => {

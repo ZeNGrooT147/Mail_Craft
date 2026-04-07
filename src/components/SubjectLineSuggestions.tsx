@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,8 +28,7 @@ const SubjectLineSuggestions = ({ emailBody, context, onSelectSubject, triggerKe
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           mode: "subject-lines",
@@ -105,3 +105,6 @@ const SubjectLineSuggestions = ({ emailBody, context, onSelectSubject, triggerKe
 };
 
 export default SubjectLineSuggestions;
+
+
+

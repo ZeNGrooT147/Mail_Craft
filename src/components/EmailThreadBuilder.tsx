@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { getAiHeaders } from "@/lib/aiHeaders";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -128,8 +129,7 @@ const EmailThreadBuilder = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+          ...(await getAiHeaders()),
         },
         body: JSON.stringify({
           messages: [{
@@ -394,3 +394,6 @@ const EmailThreadBuilder = () => {
 };
 
 export default EmailThreadBuilder;
+
+
+

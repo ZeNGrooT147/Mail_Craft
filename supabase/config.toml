@@ -1,1 +1,4 @@
 project_id = "lzzscuhzoyjwtatcrlre"
+
+[functions.draft-email]
+verify_jwt = false
