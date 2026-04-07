@@ -26,7 +26,7 @@ const Profile = () => {
   const { profile, refetch } = useProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const gmailSectionRef = useRef<HTMLElement>(null);
-  const { connection: gmailConnection, loading: gmailLoading, connecting: connectingGmail, disconnecting: disconnectingGmail, startOAuth, disconnect, refetchConnection } = useGmailConnection();
+  const { connection: gmailConnection, isExpired: gmailExpired, loading: gmailLoading, connecting: connectingGmail, disconnecting: disconnectingGmail, startOAuth, disconnect, refetchConnection } = useGmailConnection();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
@@ -260,7 +260,7 @@ const Profile = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Checking Gmail connection...
               </div>
-            ) : gmailConnection ? (
+            ) : gmailConnection && !gmailExpired ? (
               <>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">Connected as {gmailConnection.google_email}</p>
@@ -279,6 +279,17 @@ const Profile = () => {
                   </Button>
                 </div>
               </>
+            ) : gmailConnection && gmailExpired ? (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Gmail connection expired</p>
+                  <p className="text-xs text-muted-foreground">Reconnect Gmail to keep direct send working.</p>
+                </div>
+                <Button size="sm" onClick={handleConnectGmail} disabled={connectingGmail} className="gap-1.5">
+                  {connectingGmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                  Reconnect Gmail
+                </Button>
+              </div>
             ) : (
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-sm text-muted-foreground">Connect Gmail to send emails directly from MailCraft.</p>
