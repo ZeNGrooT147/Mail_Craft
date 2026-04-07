@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfile } from "@/hooks/useProfile";
 import { Button } from "@/components/ui/button";
@@ -14,16 +14,19 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  ArrowLeft, Mail, Lock, Loader2, LogOut, Shield, Calendar, Camera, Save,
+  ArrowLeft, Mail, Lock, Loader2, LogOut, Shield, Calendar, Camera, Save, Link2, Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useGmailConnection } from "@/hooks/useGmailConnection";
 
 const Profile = () => {
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { profile, loading: profileLoading, refetch } = useProfile();
+  const { profile, refetch } = useProfile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gmailSectionRef = useRef<HTMLElement>(null);
+  const { connection: gmailConnection, loading: gmailLoading, connecting: connectingGmail, disconnecting: disconnectingGmail, startOAuth, disconnect, refetchConnection } = useGmailConnection();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
@@ -32,17 +35,43 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  if (!user) { navigate("/auth"); return null; }
-
   // Derive display values
   const nameValue = displayName ?? profile?.display_name ?? "";
-  const initials = (profile?.display_name || user.email || "U").slice(0, 2).toUpperCase();
-  const createdAt = user.created_at
+  const initials = (profile?.display_name || user?.email || "U").slice(0, 2).toUpperCase();
+  const createdAt = user?.created_at
     ? new Date(user.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : "—";
-  const provider = user.app_metadata?.provider === "google" ? "Google" : "Email & Password";
+  const provider = user?.app_metadata?.provider === "google" ? "Google" : "Email & Password";
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gmail = params.get("gmail");
+    const gmailError = params.get("gmail_error");
+    const focus = params.get("focus");
+
+    if (focus === "gmail") {
+      window.setTimeout(() => {
+        gmailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+
+    if (gmail === "connected") {
+      toast.success("Gmail connected");
+      params.delete("gmail");
+      const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, document.title, nextUrl);
+      void refetchConnection();
+    }
+    if (gmailError) {
+      toast.error(`Gmail connection failed: ${gmailError}`);
+      params.delete("gmail_error");
+      const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState({}, document.title, nextUrl);
+    }
+  }, [refetchConnection]);
 
   const handleSaveDisplayName = async () => {
+    if (!user) return;
     if (displayName === null || displayName === (profile?.display_name ?? "")) return;
     setSavingName(true);
     try {
@@ -62,6 +91,7 @@ const Profile = () => {
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please select an image"); return; }
@@ -112,7 +142,42 @@ const Profile = () => {
     }
   };
 
+  const handleConnectGmail = async () => {
+    if (!user) {
+      toast.error("Please sign in to connect Gmail.");
+      return;
+    }
+    try {
+      await startOAuth(window.location.href);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to connect Gmail");
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    if (!user) {
+      toast.error("Please sign in to disconnect Gmail.");
+      return;
+    }
+    try {
+      await disconnect();
+      toast.success("Gmail disconnected");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to disconnect Gmail");
+    }
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading account...
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/auth" replace />;
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,6 +247,47 @@ const Profile = () => {
               {savingName ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               Save
             </Button>
+          </div>
+        </section>
+
+        <Separator />
+
+        {/* Gmail connection */}
+        <section ref={gmailSectionRef} className="space-y-5">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wider">Gmail Integration</h2>
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5 space-y-4">
+            {gmailLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Checking Gmail connection...
+              </div>
+            ) : gmailConnection ? (
+              <>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">Connected as {gmailConnection.google_email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {gmailConnection.expires_at ? `Token expires: ${new Date(gmailConnection.expires_at).toLocaleString()}` : "Token expiry unavailable"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={handleConnectGmail} disabled={connectingGmail} className="gap-1.5">
+                    {connectingGmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                    Reconnect Gmail
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleDisconnectGmail} disabled={disconnectingGmail} className="gap-1.5">
+                    {disconnectingGmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                    Disconnect
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm text-muted-foreground">Connect Gmail to send emails directly from MailCraft.</p>
+                <Button size="sm" onClick={handleConnectGmail} disabled={connectingGmail} className="gap-1.5">
+                  {connectingGmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                  Connect Gmail
+                </Button>
+              </div>
+            )}
           </div>
         </section>
 

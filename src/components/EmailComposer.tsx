@@ -26,12 +26,13 @@ import LinkDetector from "@/components/LinkDetector";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmailEvents } from "@/hooks/useEmailEvents";
+import { useGmailConnection } from "@/hooks/useGmailConnection";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   Sparkles, Copy, Trash2, Loader2, Mail, ArrowRight,
   CheckCircle2, Send, MessageSquareReply, PenLine,
-  ChevronDown, ChevronUp, Save, ExternalLink,
+  ChevronDown, ChevronUp, Save,
   Wand2, ShieldCheck, GitCompare, Target, ShieldAlert,
   BarChart3, Zap, RefreshCw,
 } from "lucide-react";
@@ -41,6 +42,26 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/draft-email`;
 
 type Mode = "compose" | "reply";
+
+type ComposerCache = {
+  to: string;
+  subject: string;
+  context: string;
+  incomingEmail: string;
+  tone: Tone;
+  language: LanguageCode;
+  length: EmailLength;
+  draft: string;
+  mode: Mode;
+  activeTemplateId?: string;
+  showAdvanced: boolean;
+  refinementInput: string;
+};
+
+const COMPOSER_CACHE_VERSION = "v1";
+
+const getComposerCacheKey = (userId: string | null | undefined) =>
+  userId ? `mailcraft:composer:${userId}:${COMPOSER_CACHE_VERSION}` : null;
 
 interface EmailComposerProps {
   onDraftSaved?: () => void;
@@ -59,6 +80,7 @@ const getTimeGreeting = () => {
 const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: EmailComposerProps) => {
   const { user } = useAuth();
   const { trackEvent } = useEmailEvents();
+  const { isConnected: gmailConnected, loading: gmailLoading, connecting: gmailConnecting, startOAuth } = useGmailConnection();
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [context, setContext] = useState("");
@@ -79,12 +101,15 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   const [draftEditedSinceAnalysis, setDraftEditedSinceAnalysis] = useState(false);
   const [openToolSection, setOpenToolSection] = useState<string | null>(null);
   const [pendingSendAction, setPendingSendAction] = useState<(() => void) | null>(null);
+  const [isSendingGmail, setIsSendingGmail] = useState(false);
   const [loadedDraftId, setLoadedDraftId] = useState<string | null>(null);
   const generateDraftRef = useRef<(() => void) | null>(null);
   const saveDraftRef = useRef<(() => void) | null>(null);
   const rightScrollRef = useRef<HTMLDivElement | null>(null);
   const refineSectionRef = useRef<HTMLDivElement | null>(null);
   const toolsSectionRef = useRef<HTMLDivElement | null>(null);
+  const cacheHydratedRef = useRef(false);
+  const composerCacheKey = getComposerCacheKey(user?.id);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,14 +136,71 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
     }
   }, [draftToLoad, onDraftLoaded]);
 
+  useEffect(() => {
+    if (!user?.id || !composerCacheKey || cacheHydratedRef.current || draftToLoad) return;
+
+    cacheHydratedRef.current = true;
+    const cached = window.sessionStorage.getItem(composerCacheKey);
+    if (!cached) return;
+
+    try {
+      const parsed = JSON.parse(cached) as Partial<ComposerCache>;
+      setTo(parsed.to ?? "");
+      setSubject(parsed.subject ?? "");
+      setContext(parsed.context ?? "");
+      setIncomingEmail(parsed.incomingEmail ?? "");
+      setTone((parsed.tone as Tone) ?? "Professional");
+      setLanguage((parsed.language as LanguageCode) ?? "en");
+      setLength((parsed.length as EmailLength) ?? "Medium");
+      setDraft(parsed.draft ?? "");
+      setMode((parsed.mode as Mode) ?? "compose");
+      setActiveTemplateId(parsed.activeTemplateId);
+      setShowAdvanced(Boolean(parsed.showAdvanced));
+      setRefinementInput(parsed.refinementInput ?? "");
+    } catch {
+      window.sessionStorage.removeItem(composerCacheKey);
+    }
+  }, [composerCacheKey, draftToLoad, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !composerCacheKey || !cacheHydratedRef.current || draftToLoad) return;
+
+    const payload: ComposerCache = {
+      to,
+      subject,
+      context,
+      incomingEmail,
+      tone,
+      language,
+      length,
+      draft,
+      mode,
+      activeTemplateId,
+      showAdvanced,
+      refinementInput,
+    };
+
+    const hasContent = Object.values(payload).some((value) => {
+      if (typeof value === "string") return value.trim().length > 0;
+      return Boolean(value);
+    });
+
+    if (!hasContent) {
+      window.sessionStorage.removeItem(composerCacheKey);
+      return;
+    }
+
+    window.sessionStorage.setItem(composerCacheKey, JSON.stringify(payload));
+  }, [activeTemplateId, composerCacheKey, context, draft, draftToLoad, incomingEmail, language, length, mode, refinementInput, showAdvanced, subject, to, tone, user?.id]);
+
   const langLabel = languages.find((l) => l.code === language)?.label || "English";
 
   const streamResponse = useCallback(
     async (messages: { role: string; content: string }[], aiMode: string, onChunk: (full: string) => void) => {
       const resp = await fetch(CHAT_URL, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
+        headers: {
+          "Content-Type": "application/json",
           "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
         },
         body: JSON.stringify({ messages, mode: aiMode }),
@@ -252,13 +334,6 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const safeOpen = (url: string, label: string) => {
-    try {
-      const opened = window.open(url, "_blank");
-      if (!opened) { navigator.clipboard.writeText(url); toast.info(`Pop-up blocked. ${label} link copied to clipboard.`); }
-    } catch { navigator.clipboard.writeText(url); toast.info(`${label} link copied to clipboard.`); }
-  };
-
   const checkAndSend = (action: () => void) => {
     if (detectAttachmentIntent(draft) && !draft.toLowerCase().includes("[attachment]")) {
       toast.warning("Your email mentions attachments — don't forget to attach files after opening your email client!", { duration: 5000 });
@@ -273,15 +348,90 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
     action();
   };
 
-  const openInGmail = () => {
-    const authUser = user?.email ? `&authuser=${encodeURIComponent(user.email)}` : "";
-    safeOpen(`https://mail.google.com/mail/?view=cm${authUser}&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainBody)}`, "Gmail");
-    trackEvent("sent_gmail");
+  const sendViaGmail = async () => {
+    if (gmailLoading) {
+      toast.info("Checking Gmail connection...");
+      return;
+    }
+
+    if (!gmailConnected) {
+      toast.error("Connect Gmail here first.");
+      return;
+    }
+
+    if (!plainBody.trim()) {
+      toast.error("Generate or write an email before sending.");
+      return;
+    }
+    if (!to.trim()) {
+      toast.error("Please add at least one recipient.");
+      return;
+    }
+
+    setIsSendingGmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("gmail-send", {
+        body: { to, subject, body: plainBody },
+      });
+
+      if (error || !data?.ok) {
+        const code = data?.code as string | undefined;
+        if (code === "GMAIL_NOT_CONNECTED" || code === "GMAIL_RECONNECT_REQUIRED") {
+          toast.error("Gmail is not connected or expired. Reconnect from Profile.");
+          return;
+        }
+        if (code === "GMAIL_PERMISSION_MISSING") {
+          toast.error("Missing Gmail permission. Please reconnect and grant gmail.send.");
+          return;
+        }
+        if (code === "GMAIL_RATE_LIMITED") {
+          toast.error("Gmail rate limited. Please retry in a moment.");
+          return;
+        }
+        toast.error(error?.message || data?.message || "Failed to send via Gmail.");
+        return;
+      }
+
+      const payload = data;
+      if (!payload?.ok) {
+        const code = payload?.code as string | undefined;
+        if (code === "GMAIL_NOT_CONNECTED" || code === "GMAIL_RECONNECT_REQUIRED") {
+          toast.error("Gmail is not connected or expired. Reconnect from Profile.");
+          return;
+        }
+        if (code === "GMAIL_PERMISSION_MISSING") {
+          toast.error("Missing Gmail permission. Please reconnect and grant gmail.send.");
+          return;
+        }
+        if (code === "GMAIL_RATE_LIMITED") {
+          toast.error("Gmail rate limited. Please retry in a moment.");
+          return;
+        }
+        toast.error(payload?.message || "Failed to send via Gmail.");
+        return;
+      }
+
+      trackEvent("sent_gmail", undefined, { messageId: payload?.messageId, threadId: payload?.threadId, via: "gmail_api" });
+      toast.success("Sent via Gmail");
+      if (composerCacheKey) {
+        window.sessionStorage.removeItem(composerCacheKey);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to send via Gmail.");
+    } finally {
+      setIsSendingGmail(false);
+    }
   };
 
-  const openInOutlook = () => {
-    safeOpen(`https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(to)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plainBody)}`, "Outlook");
-    trackEvent("sent_outlook");
+  const handleGmailAction = async () => {
+    if (gmailLoading || gmailConnecting) return;
+    if (!gmailConnected) {
+      const currentRoute = `${window.location.pathname}${window.location.search}${window.location.hash}` || "/";
+      await startOAuth(currentRoute);
+      return;
+    }
+    await sendViaGmail();
   };
 
   const clearAll = async () => {
@@ -294,6 +444,9 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
       toast.success("Draft deleted.");
       setLoadedDraftId(null);
       onDraftSaved?.(); // refresh drafts list
+    }
+    if (composerCacheKey) {
+      window.sessionStorage.removeItem(composerCacheKey);
     }
     setTo(""); setSubject(""); setContext(""); setIncomingEmail(""); setDraft("");
     setActiveTemplateId(undefined); setRefinementInput("");
@@ -329,9 +482,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
             <motion.button
               onClick={() => setMode("compose")}
               whileTap={{ scale: 0.98 }}
-              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${
-                mode === "compose" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${mode === "compose" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               <PenLine className="h-3.5 w-3.5" />
               Compose
@@ -339,9 +491,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
             <motion.button
               onClick={() => setMode("reply")}
               whileTap={{ scale: 0.98 }}
-              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${
-                mode === "reply" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 sm:flex-none ${mode === "reply" ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               <MessageSquareReply className="h-3.5 w-3.5" />
               Reply
@@ -521,41 +672,42 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
             className="flex flex-col h-full"
           >
             {/* ── Top Bar ── */}
-            <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-border bg-gradient-to-r from-card/90 to-card/70 backdrop-blur-md shadow-[0_8px_25px_-20px_rgba(0,0,0,0.65)]">
-              <div className="flex items-center gap-2.5">
-                {isGenerating ? (
-                  <motion.div className="flex items-center gap-2">
+            <div className="shrink-0 border-b border-border bg-gradient-to-r from-card/90 to-card/70 backdrop-blur-md shadow-[0_8px_25px_-20px_rgba(0,0,0,0.65)]">
+              <div className="flex items-center justify-between px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                  {isGenerating ? (
+                    <motion.div className="flex items-center gap-2">
+                      <motion.div
+                        className="h-2.5 w-2.5 rounded-full bg-primary"
+                        animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      <span className="text-xs font-semibold text-primary animate-pulse font-display">Generating…</span>
+                    </motion.div>
+                  ) : (
                     <motion.div
-                      className="h-2.5 w-2.5 rounded-full bg-primary"
-                      animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <span className="text-xs font-semibold text-primary animate-pulse font-display">Generating…</span>
-                  </motion.div>
-                ) : (
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm shadow-primary/25">
+                        <Mail className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                      <div className="flex flex-col leading-none">
+                        <span className="text-base font-bold text-foreground font-display tracking-tight">
+                          {mode === "reply" ? "Your Reply" : "Your Email"}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-medium mt-0.5">Ready to send</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+                {draft && (
                   <motion.div
-                    initial={{ opacity: 0, x: -8 }}
+                    initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-x-auto sm:overflow-visible pb-0.5 sm:pb-0"
                   >
-                    <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm shadow-primary/25">
-                      <Mail className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    <div className="flex flex-col leading-none">
-                      <span className="text-base font-bold text-foreground font-display tracking-tight">
-                        {mode === "reply" ? "Your Reply" : "Your Email"}
-                      </span>
-                      <span className="text-xs text-muted-foreground font-medium mt-0.5">Ready to send</span>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-              {draft && (
-                <motion.div
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-1 sm:gap-1.5 flex-nowrap overflow-x-auto sm:overflow-visible pb-0.5 sm:pb-0"
-                >
                   {user && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -583,41 +735,53 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                     {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                     <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
                   </Button>
-                  <div className="hidden sm:block w-px h-4 bg-border mx-0.5" />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => checkAndSend(openInGmail)}
-                        className="inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium shrink-0"
+                        onClick={() => checkAndSend(() => { void handleGmailAction(); })}
+                        disabled={isSendingGmail || gmailLoading || gmailConnecting}
+                        className={`inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg transition-all duration-200 font-medium shrink-0 ${gmailConnected ? "border-emerald-500/35 bg-emerald-500/8 hover:bg-emerald-500/12 hover:border-emerald-500/55 text-foreground" : "border-red-500/35 bg-red-500/8 hover:bg-red-500/12 hover:border-red-500/55 text-foreground"}`}
                       >
-                        <Mail className="h-3 w-3" />
-                        <span className="hidden sm:inline">Gmail</span>
+                          {isSendingGmail || gmailConnecting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : gmailConnected ? (
+                            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" />
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.18)] -ml-0.5" />
+                              <Mail className="h-3 w-3" />
+                            </span>
+                          )}
+                        <span className="hidden sm:inline">
+                          {!gmailConnected
+                            ? (gmailConnecting ? "Linking Gmail..." : "Connect Gmail")
+                            : isSendingGmail
+                              ? "Dispatching..."
+                              : "Send Gmail"}
+                        </span>
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-[10px]">Open in Gmail</TooltipContent>
+                    <TooltipContent side="bottom" className="text-[10px]">
+                      {!gmailConnected ? "Connect Gmail to turn this red button green" : isSendingGmail ? "Your email is on the move" : "Green-lit to send directly"}
+                    </TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => checkAndSend(openInOutlook)}
-                        className="inline-flex h-8 sm:h-9 px-2 sm:px-3.5 text-xs sm:text-sm gap-1 sm:gap-1.5 rounded-lg border-primary/15 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 font-medium shrink-0"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        <span className="hidden sm:inline">Outlook</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-[10px]">Open in Outlook</TooltipContent>
-                  </Tooltip>
-                  <div className="hidden sm:block w-px h-4 bg-border mx-0.5" />
                   <Button variant="ghost" size="sm" onClick={clearAll} className="h-8 sm:h-9 w-8 p-0 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                </motion.div>
-              )}
+                  </motion.div>
+                )}
+              </div>
+              <div className="px-5 pb-3">
+                <p className="text-xs text-muted-foreground">
+                  {gmailLoading
+                    ? "Checking Gmail link..."
+                    : gmailConnected
+                      ? "Gmail is connected and ready to send."
+                      : "Gmail is waiting. Connect it here in one tap."}
+                </p>
+              </div>
             </div>
 
             {/* ── Draft Body — THE HERO ── */}
@@ -632,7 +796,7 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                 >
                   {/* Decorative top accent bar */}
                   <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/80 to-transparent" />
-                  
+
                   {/* Subject line display */}
                   {subject && (
                     <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-0">
@@ -749,9 +913,9 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                         placeholder="Custom refinement…"
                         className="flex-1 h-11 sm:h-11 lg:h-12 bg-gradient-to-b from-background/60 to-background rounded-lg lg:rounded-xl px-4 text-sm sm:text-sm lg:text-base outline-none border border-border/60 focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                       />
-                      <button 
-                        onClick={handleCustomRefinement} 
-                        disabled={!refinementInput.trim() || isGenerating} 
+                      <button
+                        onClick={handleCustomRefinement}
+                        disabled={!refinementInput.trim() || isGenerating}
                         className="h-11 sm:h-11 lg:h-12 px-4 sm:px-5 rounded-lg lg:rounded-xl bg-gradient-to-r from-primary/90 to-primary hover:from-primary hover:to-primary/90 hover:shadow-lg hover:shadow-primary/25 text-primary-foreground font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                       >
                         <Send className="h-4 w-4 lg:h-5 lg:w-5 group-hover:translate-x-1 transition-transform" />

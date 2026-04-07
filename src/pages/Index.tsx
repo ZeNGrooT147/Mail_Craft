@@ -147,7 +147,7 @@ const Index = () => {
       </div>
       {/* ── Header ── */}
       <header className="shrink-0 z-50 border-b border-border/70 bg-card/75 backdrop-blur-xl supports-[backdrop-filter]:bg-card/70 shadow-[0_8px_30px_-20px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-[4.5rem]">
+        <div className="relative flex items-center justify-between px-4 sm:px-6 lg:px-8 h-[4.5rem]">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/30">
@@ -155,13 +155,13 @@ const Index = () => {
             </div>
             <div className="hidden sm:flex flex-col leading-none">
               <span className="font-display text-base font-bold text-foreground tracking-tight">MailCraft</span>
-              <span className="text-xs text-muted-foreground font-medium mt-0.5">AI Email Assistant</span>
+              <span className="hidden 2xl:block text-xs text-muted-foreground font-medium mt-0.5">AI Email Assistant</span>
             </div>
             <span className="sm:hidden font-display text-base font-bold text-foreground tracking-tight">MailCraft</span>
           </div>
 
           {/* Center tabs */}
-          <nav className="hidden sm:flex items-center bg-secondary/45 rounded-2xl p-1.5 gap-1 border border-border/60 shadow-sm">
+          <nav className="hidden xl:flex absolute left-1/2 -translate-x-1/2 items-center bg-secondary/45 rounded-2xl p-1.5 gap-1 border border-border/60 shadow-sm max-w-[calc(100%-24rem)] 2xl:max-w-[calc(100%-22rem)] overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activePanel === tab.id;
@@ -172,7 +172,7 @@ const Index = () => {
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   className={`
-                    relative flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
+                    relative flex items-center gap-1.5 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
                     ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}
                   `}
                 >
@@ -194,7 +194,7 @@ const Index = () => {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCmdOpen(true)}
-              className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-xl border border-border bg-background/80 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all duration-200"
+              className="hidden 2xl:flex items-center gap-2 h-10 px-4 rounded-xl border border-border bg-background/80 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all duration-200"
             >
               <Search className="h-3.5 w-3.5" />
               <span className="text-muted-foreground/50">Search…</span>
@@ -228,7 +228,7 @@ const Index = () => {
         </div>
 
         {/* Mobile tabs — wrapped grid to avoid right-side clipping */}
-        <div className="sm:hidden px-3 pb-3">
+        <div className="xl:hidden px-3 pb-3">
           <div className="grid grid-cols-4 gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -290,7 +290,7 @@ const Index = () => {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="h-full overflow-y-auto relative z-20"
             >
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <DashboardInsights onLoadDraft={handleLoadDraft} onSwitchTab={(t) => setActivePanel(t as any)} />
               </div>
             </motion.div>
