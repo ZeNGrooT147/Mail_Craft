@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfile } from "@/hooks/useProfile";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   FileText, PenLine, Send, Flame, TrendingUp,
@@ -18,7 +17,6 @@ interface DashboardInsightsProps {
 
 const DashboardInsights = ({ onLoadDraft, onSwitchTab }: DashboardInsightsProps) => {
   const { user } = useAuth();
-  const { profile } = useProfile();
   const [loading, setLoading] = useState(true);
   const [recentDrafts, setRecentDrafts] = useState<Tables<"email_drafts">[]>([]);
   const [totalDrafts, setTotalDrafts] = useState(0);
@@ -76,7 +74,7 @@ const DashboardInsights = ({ onLoadDraft, onSwitchTab }: DashboardInsightsProps)
   }
 
   const greeting = new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 18 ? "Good afternoon" : "Good evening";
-  const displayName = profile?.display_name?.split(" ")[0] || "";
+  const displayName = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "";
 
   const stats = [
     { label: "Total Drafts", value: totalDrafts, icon: FileText, color: "text-primary", bg: "bg-primary/10" },

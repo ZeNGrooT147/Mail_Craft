@@ -258,27 +258,29 @@ const Index = () => {
       {/* ── Content ── */}
       <main className="flex-1 min-h-0 overflow-hidden relative z-10">
         {/* Compose — always mounted, smooth fade */}
-        <motion.div
-          className="absolute inset-0"
-          initial={false}
-          animate={{
-            opacity: activePanel === "compose" ? 1 : 0,
-          }}
-          transition={{ duration: 0.15, ease: "easeOut" }}
-          style={{
-            zIndex: activePanel === "compose" ? 10 : 0,
-            pointerEvents: activePanel === "compose" ? "auto" : "none",
-          }}
-        >
-          <div className="h-full p-3 sm:p-4 lg:p-5">
-            <EmailComposer
-              onDraftSaved={handleDraftSaved}
-              draftToLoad={draftToLoad}
-              onDraftLoaded={handleDraftLoaded}
-              signature={activeSignature}
-            />
-          </div>
-        </motion.div>
+        {(activePanel === "compose" || draftToLoad) && (
+          <motion.div
+            className="absolute inset-0"
+            initial={false}
+            animate={{
+              opacity: activePanel === "compose" ? 1 : 0,
+            }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            style={{
+              zIndex: activePanel === "compose" ? 10 : 0,
+              pointerEvents: activePanel === "compose" ? "auto" : "none",
+            }}
+          >
+            <div className="h-full p-3 sm:p-4 lg:p-5">
+              <EmailComposer
+                onDraftSaved={handleDraftSaved}
+                draftToLoad={draftToLoad}
+                onDraftLoaded={handleDraftLoaded}
+                signature={activeSignature}
+              />
+            </div>
+          </motion.div>
+        )}
 
         <AnimatePresence mode="popLayout">
           {activePanel === "dashboard" && (
