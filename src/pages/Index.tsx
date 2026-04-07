@@ -257,30 +257,26 @@ const Index = () => {
 
       {/* ── Content ── */}
       <main className="flex-1 min-h-0 overflow-hidden relative z-10">
-        {/* Compose — always mounted, smooth fade */}
-        {(activePanel === "compose" || draftToLoad) && (
-          <motion.div
-            className="absolute inset-0"
-            initial={false}
-            animate={{
-              opacity: activePanel === "compose" ? 1 : 0,
-            }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            style={{
-              zIndex: activePanel === "compose" ? 10 : 0,
-              pointerEvents: activePanel === "compose" ? "auto" : "none",
-            }}
-          >
-            <div className="h-full p-3 sm:p-4 lg:p-5">
-              <EmailComposer
-                onDraftSaved={handleDraftSaved}
-                draftToLoad={draftToLoad}
-                onDraftLoaded={handleDraftLoaded}
-                signature={activeSignature}
-              />
-            </div>
-          </motion.div>
-        )}
+        {/* Compose stays mounted so drafts are preserved across section switches */}
+        <motion.div
+          className="absolute inset-0"
+          initial={false}
+          animate={{ opacity: activePanel === "compose" || draftToLoad ? 1 : 0 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
+          style={{
+            zIndex: activePanel === "compose" || draftToLoad ? 10 : 0,
+            pointerEvents: activePanel === "compose" || draftToLoad ? "auto" : "none",
+          }}
+        >
+          <div className="h-full p-3 sm:p-4 lg:p-5">
+            <EmailComposer
+              onDraftSaved={handleDraftSaved}
+              draftToLoad={draftToLoad}
+              onDraftLoaded={handleDraftLoaded}
+              signature={activeSignature}
+            />
+          </div>
+        </motion.div>
 
         <AnimatePresence mode="popLayout">
           {activePanel === "dashboard" && (
@@ -307,7 +303,19 @@ const Index = () => {
           {activePanel === "templates" && (
             <PanelPage key="templates" title="Email Templates" description="Browse and use pre-built templates to get started quickly.">
               <TemplatesGallery onUseTemplate={(body) => {
-                setDraftToLoad({ id: "", user_id: "", draft_body: body, created_at: "", updated_at: "", subject: "", recipient: "", tone: "Professional", context: "", language: "en", mode: "compose" });
+                setDraftToLoad({
+                  id: "",
+                  user_id: "",
+                  draft_body: body,
+                  created_at: "",
+                  updated_at: "",
+                  subject: "",
+                  recipient: "",
+                  tone: "Professional",
+                  context: "",
+                  language: "en",
+                  mode: "compose",
+                });
                 setActivePanel("compose");
               }} />
             </PanelPage>

@@ -122,19 +122,23 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
 
   useEffect(() => {
     if (draftToLoad) {
+      cacheHydratedRef.current = true;
       setTo(draftToLoad.recipient || "");
       setSubject(draftToLoad.subject || "");
       setContext(draftToLoad.context || "");
       setTone((draftToLoad.tone as Tone) || "Professional");
       setLanguage((draftToLoad.language as LanguageCode) || "en");
-      setDraft(draftToLoad.draft_body);
+      setDraft(draftToLoad.draft_body || "");
       setMode((draftToLoad.mode as Mode) || "compose");
       setActiveTemplateId(undefined);
       setLoadedDraftId(draftToLoad.id || null);
+      if (composerCacheKey) {
+        window.sessionStorage.removeItem(composerCacheKey);
+      }
       onDraftLoaded?.();
-      toast.success("Draft loaded!");
+      toast.success(draftToLoad.id ? "Draft loaded!" : "Template loaded!");
     }
-  }, [draftToLoad, onDraftLoaded]);
+  }, [composerCacheKey, draftToLoad, onDraftLoaded]);
 
   useEffect(() => {
     if (!user?.id || !composerCacheKey || cacheHydratedRef.current || draftToLoad) return;
@@ -303,10 +307,16 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
   };
 
   const handleTemplateSelect = (template: EmailTemplate) => {
+    cacheHydratedRef.current = true;
     setSubject(template.subject);
     setContext(template.context);
+    setDraft("");
     setActiveTemplateId(template.id);
     setMode("compose");
+    setLoadedDraftId(null);
+    if (composerCacheKey) {
+      window.sessionStorage.removeItem(composerCacheKey);
+    }
     toast.success(`"${template.name}" template applied!`);
   };
 
@@ -749,8 +759,8 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                           ) : gmailConnected && !gmailExpired ? (
                             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]" />
                           ) : (
-                            <span className="flex items-center gap-1">
-                              <span className="h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.18)] -ml-0.5" />
+                            <span className="flex items-center justify-center gap-1.5 leading-none">
+                              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.18)] mr-0.5" />
                               <Mail className="h-3 w-3" />
                             </span>
                           )}
@@ -968,9 +978,9 @@ const EmailComposer = ({ onDraftSaved, draftToLoad, onDraftLoaded, signature }: 
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden"
+                          className="overflow-visible"
                         >
-                          <div className="p-5 sm:p-6 border-t border-border/40 bg-gradient-to-b from-background/50 to-background">
+                          <div className="p-5 sm:p-6 pb-8 border-t border-border/40 bg-gradient-to-b from-background/50 to-background overflow-visible">
                             {openToolSection === "tone" && <ToneAnalyzer text={draft} triggerKey={analysisKey} />}
                             {openToolSection === "ab" && <DraftComparison currentDraft={draft} onPickDraft={setDraft} />}
                             {openToolSection === "coach" && <GrammarCheck emailBody={draft} triggerKey={analysisKey} />}
